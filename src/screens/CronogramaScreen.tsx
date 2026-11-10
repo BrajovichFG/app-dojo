@@ -48,12 +48,33 @@ export const CronogramaScreen: React.FC = () => {
   // Modales
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showWeekTemplateModal, setShowWeekTemplateModal] = useState(false);
+  const [planificacionSavedToast, setPlanificacionSavedToast] = useState(false);
 
   // Formulario Planificar Nueva Clase
   const [newClassName, setNewClassName] = useState('');
   const [newClassDays, setNewClassDays] = useState<DiaSemana[]>([today]);
   const [newStartTime, setNewStartTime] = useState('18:00');
   const [newEndTime, setNewEndTime] = useState('19:30');
+
+  // Abrir modal de creación para el día en que está parado el usuario
+  const handleOpenCreateForCurrentDay = () => {
+    setNewClassName('');
+    setNewClassDays([selectedDia]);
+    setNewStartTime('18:00');
+    setNewEndTime('19:30');
+    setSelectedGrupos(['sec-all']);
+    setAssignMode('TODOS_GRUPO');
+    setSpecificStudentIds([]);
+    setShowCreateModal(true);
+  };
+
+  const handleSaveMasterTemplate = () => {
+    setPlanificacionSavedToast(true);
+    setShowWeekTemplateModal(false);
+    setTimeout(() => {
+      setPlanificacionSavedToast(false);
+    }, 4500);
+  };
 
   // Selección de Grupos Etarios (1 o más)
   const gruposEtarios = [
@@ -84,6 +105,15 @@ export const CronogramaScreen: React.FC = () => {
     (c) => matchAcademia(c.academia_id, targetAcademiaId) && c.dias_semana.includes(selectedDia)
   );
   const activeClass = dayClasses.find((c) => c.id === selectedClassId) || dayClasses[0];
+
+  // Clases totales de la sede activa para la planificación semanal maestra
+  const schoolClasses = schedule.filter((c) => matchAcademia(c.academia_id, targetAcademiaId));
+  const activeDaysCount = dias.filter((d) =>
+    schoolClasses.some((c) => c.dias_semana.includes(d.key))
+  ).length;
+  const totalAssignedStudentsCount = new Set(
+    schoolStudents.filter((s) => (studentAssignments[s.id] || []).some((cId) => schoolClasses.some((c) => c.id === cId))).map((s) => s.id)
+  ).size;
 
   // Alumnos asignados a la clase actual
   const enrolledStudents = schoolStudents.filter((s) => {
@@ -236,6 +266,15 @@ export const CronogramaScreen: React.FC = () => {
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={[styles.content, isMobile && { padding: 12 }]}>
+      {/* Toast de Guardado de Planificación Maestra */}
+      {planificacionSavedToast && (
+        <View style={styles.toastSuccess}>
+          <Text style={styles.toastSuccessText}>
+            ✓ PLANIFICACIÓN SEMANAL GUARDADA — SE OCUPARÁ SEMANA A SEMANA COMO PLANTILLA MAESTRA
+          </Text>
+        </View>
+      )}
+
       {/* 1. BARRA SUPERIOR DE ACCIONES */}
       <View style={[styles.headerBar, isMobile && { flexDirection: 'column', alignItems: 'stretch', gap: 12 }]}>
         <View>
@@ -248,18 +287,18 @@ export const CronogramaScreen: React.FC = () => {
         <View style={[styles.actionButtonsGroup, isMobile && { flexDirection: 'column', width: '100%' }]}>
           <TouchableOpacity
             style={styles.btnPrimary}
-            onPress={() => setShowCreateModal(true)}
+            onPress={() => setShowWeekTemplateModal(true)}
             activeOpacity={0.85}
           >
-            <Text style={styles.btnPrimaryText}>+ PLANIFICAR CLASE</Text>
+            <Text style={styles.btnPrimaryText}>PLANIFICACIÓN SEMANAL</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
             style={styles.btnSecondary}
-            onPress={() => setShowWeekTemplateModal(true)}
+            onPress={handleOpenCreateForCurrentDay}
             activeOpacity={0.85}
           >
-            <Text style={styles.btnSecondaryText}>PLANTILLA SEMANAL</Text>
+            <Text style={styles.btnSecondaryText}>+ AGREGAR CLASE EN {selectedDia}</Text>
           </TouchableOpacity>
 
           {schedule.length > 0 && (
@@ -324,20 +363,20 @@ export const CronogramaScreen: React.FC = () => {
         <View style={styles.emptyCard}>
           <Text style={styles.emptyTitle}>NO HAY CLASES REGISTRADAS PARA EL DÍA {selectedDia}</Text>
           <Text style={styles.emptySub}>
-            Planifica una clase nueva o carga la plantilla semanal recomendada con un clic.
+            Agrega una clase para este día o revisa la planificación semanal completa del dojo.
           </Text>
           <View style={[styles.emptyActionsRow, isMobile && { flexDirection: 'column' }]}>
             <TouchableOpacity
               style={styles.btnPrimary}
-              onPress={() => setShowCreateModal(true)}
+              onPress={handleOpenCreateForCurrentDay}
             >
-              <Text style={styles.btnPrimaryText}>+ PLANIFICAR CLASE PARA EL {selectedDia}</Text>
+              <Text style={styles.btnPrimaryText}>+ AGREGAR CLASE EN {selectedDia}</Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={styles.btnSecondary}
-              onPress={handleApplyWeekTemplate}
+              onPress={() => setShowWeekTemplateModal(true)}
             >
-              <Text style={styles.btnSecondaryText}>CARGAR PLANTILLA RECOMENDADA</Text>
+              <Text style={styles.btnSecondaryText}>ABRIR PLANIFICACIÓN SEMANAL</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -656,130 +695,175 @@ export const CronogramaScreen: React.FC = () => {
         </Modal>
       )}
 
-      {/* MODAL 2: CRONOGRAMA SEMANAL — PLANIFICADOR Y PLANTILLA MAESTRA */}
+      {/* MODAL 2: PLANIFICACIÓN SEMANAL — PLANTILLA MAESTRA RECURRENTE */}
       {showWeekTemplateModal && (
         <Modal transparent animationType="fade" visible={showWeekTemplateModal}>
           <View style={styles.modalOverlay}>
-            <View style={[styles.modalCard, { width: '96%', maxWidth: 1100, maxHeight: '90%' }]}>
+            <View style={[styles.modalCard, { width: '98%', maxWidth: 1320, maxHeight: '94%' }]}>
               <View style={styles.modalRibbon}>
-                <Text style={styles.modalRibbonText}>CRONOGRAMA SEMANAL — TABLA MAESTRA Y PLANTILLA</Text>
+                <Text style={styles.modalRibbonText}>
+                  PLANIFICACIÓN SEMANAL MAESTRA — RECURRENTE SEMANA A SEMANA
+                </Text>
               </View>
 
-              <View style={{ padding: 16, flex: 1 }}>
-                <Text style={styles.templateModalTitle}>
-                  Planificador de Clases de la Semana — {currentAcademia?.nombre || 'Sede Central'}
-                </Text>
-                <Text style={styles.templateModalDesc}>
-                  Visualiza la distribución de horarios por día y hora. Puedes agregar clases individuales o cargar la plantilla completa recomendada:
-                </Text>
+              <View style={{ padding: 20, flex: 1 }}>
+                <View style={[styles.headerBodyPlan, isMobile && { flexDirection: 'column', gap: 10 }]}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.templateModalTitle}>
+                      Planificación Semanal Maestra — {currentAcademia?.nombre || 'Sede Central'}
+                    </Text>
+                    <Text style={styles.templateModalDesc}>
+                      Esta planificación se ocupa y repite automáticamente semana a semana como plantilla base activa del dojo. Las clases agregadas en los días individuales se reflejan de inmediato en esta vista.
+                    </Text>
+                  </View>
 
-                {/* Tabla de Cronograma Semanal */}
-                <ScrollView horizontal showsHorizontalScrollIndicator={true} style={{ marginTop: 12, flex: 1 }}>
-                  <ScrollView style={{ maxHeight: 420 }}>
-                    <View style={styles.weekTable}>
-                      {/* Fila de Encabezados con Días */}
-                      <View style={styles.weekTableRowHeader}>
-                        <View style={[styles.weekTableTh, { width: 110 }]}>
-                          <Text style={styles.weekTableThText}>BLOQUE HORAS</Text>
-                        </View>
-                        {dias.filter((d) => d.key !== 'DOMINGO').map((d) => (
-                          <View key={d.key} style={[styles.weekTableTh, { width: 155 }]}>
-                            <Text style={styles.weekTableThText}>{d.label.toUpperCase()}</Text>
-                          </View>
-                        ))}
-                      </View>
-
-                      {/* Filas de Horas */}
-                      {[
-                        { start: '08:00', end: '09:00', label: '08:00 - 09:00' },
-                        { start: '10:00', end: '12:00', label: '10:00 - 12:00' },
-                        { start: '16:30', end: '17:30', label: '16:30 - 17:30' },
-                        { start: '17:30', end: '19:00', label: '17:30 - 19:00' },
-                        { start: '19:30', end: '21:00', label: '19:30 - 21:00' },
-                      ].map((slot) => (
-                        <View key={slot.label} style={styles.weekTableRow}>
-                          <View style={[styles.weekTableTdTime, { width: 110 }]}>
-                            <Text style={styles.weekTableTimeText}>{slot.label}</Text>
-                          </View>
-
-                          {dias.filter((d) => d.key !== 'DOMINGO').map((d) => {
-                            const matchingClasses = schedule.filter(
-                              (c) =>
-                                matchAcademia(c.academia_id, targetAcademiaId) &&
-                                c.dias_semana.includes(d.key) &&
-                                c.hora_inicio === slot.start
-                            );
-
-                            return (
-                              <View key={d.key} style={[styles.weekTableTd, { width: 155 }]}>
-                                {matchingClasses.length > 0 ? (
-                                  matchingClasses.map((cl) => {
-                                    const count = schoolStudents.filter((s) =>
-                                      (studentAssignments[s.id] || []).includes(cl.id)
-                                    ).length;
-
-                                    return (
-                                      <View key={cl.id} style={styles.weekClassCell}>
-                                        <Text style={styles.weekClassName} numberOfLines={2}>
-                                          {cl.nombre_clase}
-                                        </Text>
-                                        <Text style={styles.weekClassSub}>
-                                          {count} {count === 1 ? 'Alumno' : 'Alumnos'}
-                                        </Text>
-                                        <TouchableOpacity
-                                          style={styles.weekClassDeleteBtn}
-                                          onPress={() => {
-                                            if (typeof window !== 'undefined' && window.confirm(`¿Eliminar la clase "${cl.nombre_clase}"?`)) {
-                                              deleteHorarioClase(cl.id);
-                                            }
-                                          }}
-                                        >
-                                          <Text style={styles.weekClassDeleteText}>✕ Quitar</Text>
-                                        </TouchableOpacity>
-                                      </View>
-                                    );
-                                  })
-                                ) : (
-                                  <TouchableOpacity
-                                    style={styles.weekEmptySlotBtn}
-                                    onPress={() => {
-                                      setShowWeekTemplateModal(false);
-                                      setNewClassName('');
-                                      setNewClassDays([d.key]);
-                                      setNewStartTime(slot.start);
-                                      setNewEndTime(slot.end);
-                                      setShowCreateModal(true);
-                                    }}
-                                  >
-                                    <Text style={styles.weekEmptySlotText}>+ Asignar</Text>
-                                  </TouchableOpacity>
-                                )}
-                              </View>
-                            );
-                          })}
-                        </View>
-                      ))}
+                  {/* Métricas destacadas */}
+                  <View style={styles.statsBannerRow}>
+                    <View style={styles.statBadgeCard}>
+                      <Text style={styles.statBadgeLabel}>CLASES SEMANALES</Text>
+                      <Text style={styles.statBadgeValue}>{schoolClasses.length} Clases</Text>
                     </View>
-                  </ScrollView>
+                    <View style={styles.statBadgeCard}>
+                      <Text style={styles.statBadgeLabel}>ALUMNOS ASIGNADOS</Text>
+                      <Text style={[styles.statBadgeValue, { color: colors.accent }]}>
+                        {totalAssignedStudentsCount} Atletas
+                      </Text>
+                    </View>
+                    <View style={styles.statBadgeCard}>
+                      <Text style={styles.statBadgeLabel}>DÍAS CON ACTIVIDAD</Text>
+                      <Text style={[styles.statBadgeValue, { color: colors.success }]}>
+                        {activeDaysCount} de 6 días
+                      </Text>
+                    </View>
+                  </View>
+                </View>
+
+                {/* Grilla Semanal con Visual Mayor por Días */}
+                <ScrollView horizontal showsHorizontalScrollIndicator={true} style={{ marginTop: 14, flex: 1 }}>
+                  <View style={{ flexDirection: 'row', minHeight: 380, paddingBottom: 10 }}>
+                    {dias.filter((d) => d.key !== 'DOMINGO').map((d) => {
+                      const classesForDay = schoolClasses
+                        .filter((c) => c.dias_semana.includes(d.key))
+                        .sort((a, b) => a.hora_inicio.localeCompare(b.hora_inicio));
+
+                      return (
+                        <View key={d.key} style={styles.weekDayColumn}>
+                          {/* Encabezado del Día */}
+                          <View style={styles.weekDayColHeader}>
+                            <Text style={styles.weekDayColTitle}>{d.label.toUpperCase()}</Text>
+                            <View style={styles.weekDayCountBadge}>
+                              <Text style={styles.weekDayCountText}>
+                                {classesForDay.length} {classesForDay.length === 1 ? 'Clase' : 'Clases'}
+                              </Text>
+                            </View>
+                          </View>
+
+                          {/* Clases Asignadas en este Día */}
+                          <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 8, gap: 8 }}>
+                            {classesForDay.length === 0 ? (
+                              <View style={styles.emptyColBox}>
+                                <Text style={styles.emptyColText}>Sin clases programadas este día</Text>
+                              </View>
+                            ) : (
+                              classesForDay.map((cl) => {
+                                const assignedToThis = schoolStudents.filter((s) =>
+                                  (studentAssignments[s.id] || []).includes(cl.id)
+                                );
+
+                                return (
+                                  <View key={cl.id} style={styles.weekClassCardMajor}>
+                                    <View style={styles.weekClassTimeRow}>
+                                      <View style={styles.timeTagSharp}>
+                                        <Text style={styles.timeTagSharpText}>
+                                          {cl.hora_inicio} - {cl.hora_fin} hrs
+                                        </Text>
+                                      </View>
+                                      <TouchableOpacity
+                                        style={styles.weekClassDeleteBtn}
+                                        onPress={() => {
+                                          if (
+                                            typeof window !== 'undefined' &&
+                                            window.confirm(`¿Quitar la clase "${cl.nombre_clase}" de la planificación?`)
+                                          ) {
+                                            deleteHorarioClase(cl.id);
+                                          }
+                                        }}
+                                      >
+                                        <Text style={styles.weekClassDeleteText}>✕</Text>
+                                      </TouchableOpacity>
+                                    </View>
+
+                                    <Text style={styles.weekClassTitleMajor} numberOfLines={2}>
+                                      {cl.nombre_clase}
+                                    </Text>
+
+                                    <View style={styles.weekClassMetaBox}>
+                                      <Text style={styles.weekClassStudentsCount}>
+                                        👥 {assignedToThis.length} {assignedToThis.length === 1 ? 'Alumno asignado' : 'Alumnos asignados'}
+                                      </Text>
+                                      {assignedToThis.length > 0 && (
+                                        <Text style={styles.weekClassNamesPreview} numberOfLines={2}>
+                                          {assignedToThis
+                                            .slice(0, 3)
+                                            .map((st) => `${st.nombres.split(' ')[0]} ${st.apellidos.split(' ')[0]}`)
+                                            .join(', ')}
+                                          {assignedToThis.length > 3 ? ` y +${assignedToThis.length - 3}` : ''}
+                                        </Text>
+                                      )}
+                                    </View>
+                                  </View>
+                                );
+                              })
+                            )}
+                          </ScrollView>
+
+                          {/* Botón para agregar clase puntual en este día */}
+                          <TouchableOpacity
+                            style={styles.addDayClassBtn}
+                            onPress={() => {
+                              setNewClassName('');
+                              setNewClassDays([d.key]);
+                              setNewStartTime('18:00');
+                              setNewEndTime('19:30');
+                              setSelectedGrupos(['sec-all']);
+                              setAssignMode('TODOS_GRUPO');
+                              setSpecificStudentIds([]);
+                              setShowCreateModal(true);
+                            }}
+                            activeOpacity={0.8}
+                          >
+                            <Text style={styles.addDayClassBtnText}>+ Asignar Clase el {d.label}</Text>
+                          </TouchableOpacity>
+                        </View>
+                      );
+                    })}
+                  </View>
                 </ScrollView>
 
-                {/* Acciones del Modal */}
-                <View style={[styles.modalActionsRow, { marginTop: 16 }]}>
+                {/* Acciones de la Planificación Semanal */}
+                <View style={[styles.modalActionsRow, isMobile && { flexDirection: 'column', gap: 10 }]}>
                   <TouchableOpacity
-                    style={styles.modalCancelBtn}
-                    onPress={() => setShowWeekTemplateModal(false)}
+                    style={styles.btnSecondary}
+                    onPress={handleApplyWeekTemplate}
+                    activeOpacity={0.85}
                   >
-                    <Text style={styles.modalCancelBtnText}>CERRAR CRONOGRAMA</Text>
+                    <Text style={styles.btnSecondaryText}>CARGAR PLANTILLA RECOMENDADA</Text>
                   </TouchableOpacity>
 
                   <TouchableOpacity
                     style={styles.modalConfirmBtn}
-                    onPress={() => {
-                      handleApplyWeekTemplate();
-                      setShowWeekTemplateModal(false);
-                    }}
+                    onPress={handleSaveMasterTemplate}
+                    activeOpacity={0.85}
                   >
-                    <Text style={styles.modalConfirmBtnText}>CARGAR PLANTILLA SEMANAL RECOMENDADA</Text>
+                    <Text style={styles.modalConfirmBtnText}>✓ GUARDAR COMO PLANTILLA SEMANAL MAESTRA</Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={styles.modalCancelBtn}
+                    onPress={() => setShowWeekTemplateModal(false)}
+                    activeOpacity={0.85}
+                  >
+                    <Text style={styles.modalCancelBtnText}>CERRAR PLANIFICACIÓN ✕</Text>
                   </TouchableOpacity>
                 </View>
               </View>
@@ -1309,104 +1393,184 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '900',
   },
+  headerBodyPlan: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    gap: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.borderSubtle,
+    paddingBottom: 14,
+  },
   templateModalTitle: {
     color: colors.textPrimary,
-    fontSize: 15,
+    fontSize: 16,
     fontWeight: '900',
     lineHeight: 22,
+    letterSpacing: 0.3,
   },
   templateModalDesc: {
     color: colors.textMuted,
     fontSize: 12,
-    marginTop: 6,
+    marginTop: 4,
     lineHeight: 18,
   },
-  weekTable: {
+  statsBannerRow: {
+    flexDirection: 'row',
+    gap: 10,
+    flexWrap: 'wrap',
+  },
+  statBadgeCard: {
+    backgroundColor: colors.bgDark,
+    borderWidth: 1,
+    borderColor: colors.borderSubtle,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 0,
+    minWidth: 110,
+  },
+  statBadgeLabel: {
+    color: colors.textDim,
+    fontSize: 9,
+    fontWeight: '800',
+    letterSpacing: 0.5,
+  },
+  statBadgeValue: {
+    color: colors.textPrimary,
+    fontSize: 13,
+    fontWeight: '900',
+    marginTop: 2,
+  },
+  weekDayColumn: {
+    width: 200,
+    backgroundColor: colors.bgDark,
     borderWidth: 1,
     borderColor: colors.borderLight,
-    backgroundColor: colors.bgCard,
+    borderRadius: 0,
+    marginRight: 10,
+    overflow: 'hidden',
   },
-  weekTableRowHeader: {
-    flexDirection: 'row',
+  weekDayColHeader: {
     backgroundColor: colors.bgSurface,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
     borderBottomWidth: 1,
     borderBottomColor: colors.borderLight,
-  },
-  weekTableTh: {
-    padding: 10,
-    borderRightWidth: 1,
-    borderRightColor: colors.borderSubtle,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
-    justifyContent: 'center',
   },
-  weekTableThText: {
+  weekDayColTitle: {
     color: colors.primary,
     fontSize: 11,
     fontWeight: '900',
     letterSpacing: 0.5,
   },
-  weekTableRow: {
-    flexDirection: 'row',
-    borderBottomWidth: 1,
-    borderBottomColor: colors.borderSubtle,
+  weekDayCountBadge: {
+    backgroundColor: 'rgba(255, 107, 0, 0.15)',
+    paddingVertical: 2,
+    paddingHorizontal: 6,
+    borderRadius: 0,
   },
-  weekTableTdTime: {
-    padding: 8,
-    backgroundColor: colors.bgDarkest,
-    borderRightWidth: 1,
-    borderRightColor: colors.borderSubtle,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  weekTableTimeText: {
-    color: colors.textMuted,
-    fontSize: 10,
-    fontWeight: '800',
-  },
-  weekTableTd: {
-    padding: 6,
-    borderRightWidth: 1,
-    borderRightColor: colors.borderSubtle,
-    justifyContent: 'center',
-    minHeight: 65,
-  },
-  weekClassCell: {
-    backgroundColor: 'rgba(255, 107, 0, 0.12)',
-    borderWidth: 1,
-    borderColor: colors.primary,
-    padding: 6,
-    gap: 2,
-  },
-  weekClassName: {
-    color: colors.textPrimary,
-    fontSize: 11,
-    fontWeight: '800',
-  },
-  weekClassSub: {
+  weekDayCountText: {
     color: colors.primary,
-    fontSize: 10,
-    fontWeight: '700',
-  },
-  weekClassDeleteBtn: {
-    alignSelf: 'flex-end',
-    marginTop: 2,
-  },
-  weekClassDeleteText: {
-    color: colors.danger,
     fontSize: 9,
     fontWeight: '800',
   },
-  weekEmptySlotBtn: {
-    borderWidth: 1,
-    borderColor: colors.borderSubtle,
-    borderStyle: 'dashed',
-    paddingVertical: 12,
+  emptyColBox: {
+    paddingVertical: 24,
+    paddingHorizontal: 10,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  weekEmptySlotText: {
+  emptyColText: {
     color: colors.textDim,
     fontSize: 10,
-    fontWeight: '700',
+    textAlign: 'center',
+    fontStyle: 'italic',
+  },
+  weekClassCardMajor: {
+    backgroundColor: colors.bgCard,
+    borderWidth: 1,
+    borderColor: colors.borderSubtle,
+    borderLeftWidth: 3,
+    borderLeftColor: colors.primary,
+    padding: 10,
+    borderRadius: 0,
+    gap: 4,
+  },
+  weekClassTimeRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  timeTagSharp: {
+    backgroundColor: 'rgba(255, 107, 0, 0.15)',
+    paddingVertical: 2,
+    paddingHorizontal: 6,
+    borderRadius: 0,
+  },
+  timeTagSharpText: {
+    color: colors.primary,
+    fontSize: 9,
+    fontWeight: '900',
+  },
+  weekClassTitleMajor: {
+    color: colors.textPrimary,
+    fontSize: 11,
+    fontWeight: '800',
+    marginTop: 2,
+  },
+  weekClassMetaBox: {
+    marginTop: 4,
+    gap: 2,
+  },
+  weekClassStudentsCount: {
+    color: colors.accent,
+    fontSize: 10,
+    fontWeight: '800',
+  },
+  weekClassNamesPreview: {
+    color: colors.textMuted,
+    fontSize: 9,
+    lineHeight: 13,
+  },
+  addDayClassBtn: {
+    borderTopWidth: 1,
+    borderTopColor: colors.borderSubtle,
+    paddingVertical: 8,
+    paddingHorizontal: 10,
+    backgroundColor: colors.bgSurface,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  addDayClassBtnText: {
+    color: colors.primary,
+    fontSize: 10,
+    fontWeight: '900',
+  },
+  weekClassDeleteBtn: {
+    padding: 2,
+  },
+  weekClassDeleteText: {
+    color: colors.danger,
+    fontSize: 10,
+    fontWeight: '900',
+  },
+  toastSuccess: {
+    backgroundColor: 'rgba(16, 185, 129, 0.15)',
+    borderWidth: 1,
+    borderColor: colors.success,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 0,
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  toastSuccessText: {
+    color: colors.success,
+    fontSize: 11,
+    fontWeight: '900',
+    letterSpacing: 0.5,
   },
 });
