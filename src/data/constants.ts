@@ -1,3 +1,4 @@
+// DojoStrike OS v2.7 • Shito Ryu Kyokan Genbukai Rancagua (Prueba de sincronización)
 import { Academia, GradoCinturon, HorarioClase, Seccion, Usuario, Evento, ExamenGrado } from '../types';
 import categoriesRaw from './categoriesFromExcel.json';
 
