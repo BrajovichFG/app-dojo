@@ -66,13 +66,13 @@ export const Header: React.FC = () => {
           <View style={styles.dojoBadge}>
             <Text style={styles.dojoBadgeText}>SHITO RYU</Text>
           </View>
-          <View>
+          <View style={{ flex: 1, minWidth: 0, overflow: 'hidden' }}>
             <TouchableOpacity
               style={styles.academiaSelectorBtn}
               onPress={() => setShowAcademiaMenu(!showAcademiaMenu)}
               activeOpacity={0.8}
             >
-              <Text style={styles.dojoTitle} numberOfLines={1}>
+              <Text style={styles.dojoTitle} numberOfLines={1} ellipsizeMode="tail">
                 {currentAcademia?.nombre || 'Dojo Central Rancagua'} ▾
               </Text>
             </TouchableOpacity>
@@ -200,6 +200,9 @@ const styles = StyleSheet.create({
     backgroundColor: colors.bgSurface,
     borderBottomWidth: 1,
     borderBottomColor: colors.borderSubtle,
+    width: '100%',
+    maxWidth: '100%',
+    overflow: 'hidden',
   },
   topBar: {
     flexDirection: 'row',
@@ -209,30 +212,33 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     flexWrap: 'wrap',
     gap: 12,
+    width: '100%',
+    maxWidth: '100%',
   },
   topBarMobile: {
-    paddingHorizontal: 12,
+    paddingHorizontal: 10,
     paddingVertical: 8,
+    gap: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
   },
   brandContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
-    flexShrink: 1,
+    gap: 10,
+    flex: 1,
+    minWidth: 0,
+    overflow: 'hidden',
   },
   dojoBadge: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: colors.primary,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: radii.md,
+    paddingHorizontal: 8,
+    paddingVertical: 5,
+    borderRadius: 0,
     gap: 6,
-    shadowColor: colors.primary,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.35,
-    shadowRadius: 6,
-    elevation: 3,
   },
   dojoBadgeIcon: {
     fontSize: 14,
@@ -246,9 +252,10 @@ const styles = StyleSheet.create({
   academiaSelectorBtn: {
     flexDirection: 'row',
     alignItems: 'center',
+    maxWidth: '100%',
   },
   dojoTitle: {
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: '900',
     color: colors.textPrimary,
     letterSpacing: 0.3,
@@ -261,18 +268,19 @@ const styles = StyleSheet.create({
   topActions: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
+    gap: 8,
+    flexShrink: 0,
   },
   statusPill: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: colors.bgDarkest,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
+    paddingHorizontal: 8,
+    paddingVertical: 5,
     borderWidth: 1,
     borderColor: colors.borderSubtle,
-    borderRadius: radii.full,
-    gap: 8,
+    borderRadius: 0,
+    gap: 6,
   },
   squareDot: {
     width: 6,
@@ -287,12 +295,12 @@ const styles = StyleSheet.create({
     letterSpacing: 0.6,
   },
   logoutBtn: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
     backgroundColor: colors.bgCard,
     borderWidth: 1,
     borderColor: colors.borderLight,
-    borderRadius: radii.md,
+    borderRadius: 0,
   },
   logoutBtnText: {
     color: colors.textSecondary,
@@ -308,7 +316,7 @@ const styles = StyleSheet.create({
     marginBottom: 10,
     padding: 12,
     gap: 8,
-    borderRadius: radii.lg,
+    borderRadius: 0,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.4,
@@ -327,7 +335,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.bgSurface,
     borderWidth: 1,
     borderColor: colors.borderSubtle,
-    borderRadius: radii.md,
+    borderRadius: 0,
   },
   dropdownItemActive: {
     borderColor: colors.primary,
@@ -351,6 +359,9 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: colors.borderSubtle,
     backgroundColor: colors.bgDarkest,
+    width: '100%',
+    maxWidth: '100%',
+    overflow: 'hidden',
   },
   navContent: {
     paddingHorizontal: 6,
@@ -365,7 +376,7 @@ const styles = StyleSheet.create({
     position: 'relative',
     marginVertical: 4,
     marginHorizontal: 2,
-    borderRadius: radii.md,
+    borderRadius: 0,
   },
   tabButtonMobile: {
     paddingHorizontal: 12,

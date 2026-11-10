@@ -410,6 +410,9 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.bgDarkest,
+    width: '100%',
+    maxWidth: '100%',
+    overflow: 'hidden',
   },
   topStatsBar: {
     backgroundColor: colors.bgSurface,

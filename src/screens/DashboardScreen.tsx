@@ -115,7 +115,7 @@ export const DashboardScreen: React.FC = () => {
           <View style={styles.announcementBadge}>
             <Text style={styles.announcementBadgeText}>TABLÓN DE ANUNCIOS OFICIAL</Text>
           </View>
-          <Text style={styles.announcementDate}>
+          <Text style={styles.announcementDate} numberOfLines={1} ellipsizeMode="tail">
             ESCUELA ACTIVA: {currentAcademia?.nombre.toUpperCase() || 'DOJO CENTRAL'}
           </Text>
         </View>
@@ -397,6 +397,8 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.bgDarkest,
+    width: '100%',
+    maxWidth: '100%',
   },
   content: {
     padding: 24,
@@ -404,13 +406,15 @@ const styles = StyleSheet.create({
     maxWidth: 1400,
     width: '100%',
     alignSelf: 'center',
+    overflow: 'hidden',
   },
   announcementCard: {
     backgroundColor: colors.bgCard,
     borderWidth: 1,
     borderColor: colors.borderLight,
-    borderRadius: radii.lg,
+    borderRadius: 0,
     overflow: 'hidden',
+    width: '100%',
   },
   announcementHeader: {
     backgroundColor: colors.bgSurface,
@@ -428,7 +432,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.primary,
     paddingVertical: 4,
     paddingHorizontal: 10,
-    borderRadius: radii.sm,
+    borderRadius: 0,
   },
   announcementBadgeText: {
     color: '#FFFFFF',
@@ -440,6 +444,7 @@ const styles = StyleSheet.create({
     color: colors.textMuted,
     fontSize: 11,
     fontWeight: '700',
+    flexShrink: 1,
   },
   announcementBody: {
     padding: 16,
@@ -451,12 +456,15 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     gap: 16,
     paddingVertical: 8,
+    width: '100%',
   },
   announcementTopMetaRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 14,
     flex: 1,
+    minWidth: 0,
+    overflow: 'hidden',
   },
   announcementDateBox: {
     width: 52,
@@ -464,7 +472,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.primaryLight,
     borderWidth: 1,
     borderColor: colors.primary,
-    borderRadius: radii.md,
+    borderRadius: 0,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -494,7 +502,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.bgInput,
     borderWidth: 1,
     borderColor: colors.primary,
-    borderRadius: radii.md,
+    borderRadius: 0,
     paddingVertical: 8,
     paddingHorizontal: 14,
   },
@@ -507,6 +515,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 16,
     flexWrap: 'wrap',
+    width: '100%',
   },
   metricCard: {
     flex: 1,
@@ -514,11 +523,12 @@ const styles = StyleSheet.create({
     backgroundColor: colors.bgCard,
     borderWidth: 1,
     borderColor: colors.borderLight,
-    borderRadius: radii.lg,
+    borderRadius: 0,
     padding: 20,
   },
   metricCardMobile: {
     minWidth: '100%',
+    width: '100%',
   },
   metricHeader: {
     flexDirection: 'row',
@@ -538,7 +548,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     borderWidth: 1,
     borderColor: colors.borderSubtle,
-    borderRadius: radii.sm,
+    borderRadius: 0,
   },
   metricPillText: {
     color: colors.textMuted,
@@ -559,8 +569,10 @@ const styles = StyleSheet.create({
     backgroundColor: colors.bgCard,
     borderWidth: 1,
     borderColor: colors.borderLight,
-    borderRadius: radii.lg,
+    borderRadius: 0,
     padding: 20,
+    width: '100%',
+    overflow: 'hidden',
   },
   boxCardHeader: {
     flexDirection: 'row',
@@ -589,13 +601,14 @@ const styles = StyleSheet.create({
   sectionGrid: {
     flexDirection: 'row',
     gap: 12,
+    width: '100%',
   },
   sectionCol: {
     flex: 1,
     backgroundColor: colors.bgInput,
     borderWidth: 1,
     borderColor: colors.borderSubtle,
-    borderRadius: radii.md,
+    borderRadius: 0,
     padding: 16,
   },
   sectionBadge: {
@@ -603,7 +616,7 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
     paddingHorizontal: 8,
     alignSelf: 'flex-start',
-    borderRadius: radii.sm,
+    borderRadius: 0,
     marginBottom: 10,
   },
   sectionBadgeText: {
@@ -626,13 +639,14 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 14,
+    width: '100%',
   },
   pendingCard: {
     width: '31.5%',
     backgroundColor: colors.bgInput,
     borderWidth: 1,
     borderColor: colors.borderSubtle,
-    borderRadius: radii.md,
+    borderRadius: 0,
     padding: 14,
     justifyContent: 'space-between',
   },
@@ -652,7 +666,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.dangerBg,
     paddingVertical: 2,
     paddingHorizontal: 6,
-    borderRadius: radii.xs,
+    borderRadius: 0,
   },
   pendingBadgeText: {
     color: colors.danger,
@@ -671,7 +685,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.primary,
     paddingVertical: 8,
     alignItems: 'center',
-    borderRadius: radii.sm,
+    borderRadius: 0,
     marginTop: 4,
   },
   pendingActionBtnText: {
@@ -699,8 +713,9 @@ const styles = StyleSheet.create({
     backgroundColor: colors.bgCard,
     borderWidth: 1,
     borderColor: colors.primary,
-    borderRadius: radii.lg,
+    borderRadius: 0,
     overflow: 'hidden',
+    width: '100%',
   },
   footerRibbon: {
     backgroundColor: colors.primary,
@@ -718,6 +733,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 20,
+    width: '100%',
   },
   footerEnrollTitle: {
     color: colors.textPrimary,
@@ -732,9 +748,11 @@ const styles = StyleSheet.create({
   urlBox: {
     backgroundColor: colors.bgInput,
     padding: 10,
-    borderRadius: radii.md,
+    borderRadius: 0,
     borderWidth: 1,
     borderColor: colors.borderSubtle,
+    maxWidth: '100%',
+    overflow: 'hidden',
   },
   urlText: {
     color: colors.primary,
@@ -748,7 +766,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.primary,
     paddingVertical: 12,
     paddingHorizontal: 18,
-    borderRadius: radii.md,
+    borderRadius: 0,
     alignItems: 'center',
   },
   btnCopyLinkText: {
@@ -763,7 +781,7 @@ const styles = StyleSheet.create({
     borderColor: colors.borderLight,
     paddingVertical: 12,
     paddingHorizontal: 18,
-    borderRadius: radii.md,
+    borderRadius: 0,
     alignItems: 'center',
   },
   btnPreviewLinkText: {

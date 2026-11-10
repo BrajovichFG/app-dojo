@@ -219,10 +219,16 @@ export const useDojoStore = create<DojoState>()(
           }
           nextState.students = finalStudents;
 
-          let finalAcademias = remoteAcademias.length > 0 ? [...remoteAcademias] : [...get().academias];
+          let finalAcademias = (remoteAcademias.length > 0 ? [...remoteAcademias] : [...(get().academias || [])])
+            .filter((a) => a.id !== 'acad-machali' && a.id !== 'acad-requinoa');
+
+          if (finalAcademias.length === 0) {
+            finalAcademias = [...ACADEMIAS_DISPONIBLES];
+          }
 
           // Sincronizar automáticamente cualquier academia local pendiente (ej. creadas antes de la sincronización)
-          const currentLocalAcads = get().academias || [];
+          const currentLocalAcads = (get().academias || [])
+            .filter((a) => a.id !== 'acad-machali' && a.id !== 'acad-requinoa');
           for (const localAcad of currentLocalAcads) {
             const alreadyExists = finalAcademias.some(
               (ra) => ra.id === localAcad.id || ra.nombre.trim().toLowerCase() === localAcad.nombre.trim().toLowerCase()
@@ -268,9 +274,10 @@ export const useDojoStore = create<DojoState>()(
 
       loginAsUser: (userId, academiaId) => {
         const user = get().users.find((u) => u.id === userId) || get().users[0];
+        const availableAcads = get().academias || ACADEMIAS_DISPONIBLES;
         const targetAcademia = academiaId
-          ? user.academias.find((a) => a.id === academiaId) || user.academias[0]
-          : user.academias[0];
+          ? availableAcads.find((a) => a.id === academiaId) || user?.academias?.find((a) => a.id === academiaId) || availableAcads[0]
+          : availableAcads[0];
 
         set({
           currentUser: user,

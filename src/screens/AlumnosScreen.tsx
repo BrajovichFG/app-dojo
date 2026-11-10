@@ -32,6 +32,22 @@ export const AlumnosScreen: React.FC = () => {
   type FilterAgeGroup = 'ALL' | 'PREESCOLAR' | 'ADOLESCENTES' | 'ADULTOS';
   const [filterSection, setFilterSection] = useState<FilterAgeGroup>('ALL');
 
+  // Control de scroll horizontal con botones para computadoras sin touchpad
+  const filterScrollRef = React.useRef<any>(null);
+  const [filterScrollX, setFilterScrollX] = useState(0);
+
+  const handleScrollRight = () => {
+    const nextPos = filterScrollX + 160;
+    filterScrollRef.current?.scrollTo({ x: nextPos, animated: true });
+    setFilterScrollX(nextPos);
+  };
+
+  const handleScrollLeft = () => {
+    const nextPos = Math.max(0, filterScrollX - 160);
+    filterScrollRef.current?.scrollTo({ x: nextPos, animated: true });
+    setFilterScrollX(nextPos);
+  };
+
   // Filtrar alumnos por la escuela activa
   const targetAcademiaId = currentAcademia?.id || CENTRAL_ACADEMIA_ID;
   const schoolStudents = students.filter((s) => matchAcademia(s.academia_id, targetAcademiaId));
@@ -287,9 +303,27 @@ export const AlumnosScreen: React.FC = () => {
             />
           </View>
 
-          {/* Filtros de Secciones por Grupos Etarios */}
-          <View style={styles.filterPillsRow}>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 6, paddingHorizontal: 12 }}>
+          {/* Filtros de Secciones por Grupos Etarios con botones < y > para navegación con mouse */}
+          <View style={styles.filterPillsContainer}>
+            {filterScrollX > 10 && (
+              <TouchableOpacity
+                style={styles.scrollArrowBtn}
+                onPress={handleScrollLeft}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.scrollArrowText}>‹</Text>
+              </TouchableOpacity>
+            )}
+
+            <ScrollView
+              ref={filterScrollRef}
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={{ gap: 6, paddingHorizontal: 6 }}
+              onScroll={(e) => setFilterScrollX(e.nativeEvent.contentOffset.x)}
+              scrollEventThrottle={16}
+              style={{ flex: 1 }}
+            >
               <TouchableOpacity
                 style={[styles.filterPill, filterSection === 'ALL' && styles.filterPillActive]}
                 onPress={() => setFilterSection('ALL')}
@@ -326,6 +360,14 @@ export const AlumnosScreen: React.FC = () => {
                 </Text>
               </TouchableOpacity>
             </ScrollView>
+
+            <TouchableOpacity
+              style={styles.scrollArrowBtn}
+              onPress={handleScrollRight}
+              activeOpacity={0.7}
+            >
+              <Text style={styles.scrollArrowText}>›</Text>
+            </TouchableOpacity>
           </View>
 
           {/* Lista de Alumnos */}
@@ -800,6 +842,9 @@ const styles = StyleSheet.create({
     flex: 1,
     flexDirection: 'row',
     backgroundColor: colors.bgDarkest,
+    width: '100%',
+    maxWidth: '100%',
+    overflow: 'hidden',
   },
   mobileTabBar: {
     position: 'absolute',
@@ -906,6 +951,33 @@ const styles = StyleSheet.create({
     color: colors.textPrimary,
     fontSize: 13,
     borderRadius: radii.md,
+  },
+  filterPillsContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 8,
+    paddingHorizontal: 8,
+    gap: 4,
+    backgroundColor: colors.bgDarkest,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.borderSubtle,
+    width: '100%',
+  },
+  scrollArrowBtn: {
+    backgroundColor: colors.bgCard,
+    borderWidth: 1,
+    borderColor: colors.borderLight,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 0,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  scrollArrowText: {
+    color: colors.primary,
+    fontSize: 16,
+    fontWeight: '900',
+    lineHeight: 18,
   },
   filterPillsRow: {
     flexDirection: 'row',

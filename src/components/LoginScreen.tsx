@@ -17,6 +17,9 @@ export const LoginScreen: React.FC = () => {
   const setTab = useDojoStore((state) => state.setTab);
   const { isMobile } = useResponsive();
 
+  // Flujo en 2 Pasos: 'CREDENTIALS' -> 'SELECT_ACADEMIA'
+  const [step, setStep] = useState<'CREDENTIALS' | 'SELECT_ACADEMIA'>('CREDENTIALS');
+
   // Campos de fachada para autenticación
   const [identificador, setIdentificador] = useState('admin@dojoshitoryu.cl');
   const [password, setPassword] = useState('••••••••••••');
@@ -25,17 +28,20 @@ export const LoginScreen: React.FC = () => {
   );
   const [errorMsg, setErrorMsg] = useState('');
 
-  const handleLogin = () => {
+  // Paso 1: Validar credenciales y pasar a ventana de selección de academia
+  const handleValidateCredentials = () => {
     if (!identificador.trim()) {
       setErrorMsg('Por favor ingresa tu RUT o correo autorizado.');
       return;
     }
     setErrorMsg('');
+    setStep('SELECT_ACADEMIA');
+  };
 
-    // Usuario administrador por defecto para la fachada
+  // Paso 2: Confirmar academia y entrar al Dashboard
+  const handleConfirmLogin = () => {
     const adminUser = users.find((u) => u.rol === 'ADMIN_GENERAL') || users[0];
     const targetAcadId = selectedAcademiaId || academias[0]?.id || '';
-
     loginAsUser(adminUser ? adminUser.id : 'usr-1', targetAcadId);
   };
 
@@ -68,9 +74,13 @@ export const LoginScreen: React.FC = () => {
               <Text style={styles.logoSquareText}>SR</Text>
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={styles.title}>PORTAL DE ACCESO AL DOJO</Text>
+              <Text style={styles.title}>
+                {step === 'CREDENTIALS' ? 'PORTAL DE ACCESO AL DOJO' : 'SELECCIÓN DE SEDE / ESCUELA'}
+              </Text>
               <Text style={styles.subtitle}>
-                Panel Administrativo, Control de Nóminas y Planificación Técnica
+                {step === 'CREDENTIALS'
+                  ? 'Panel Administrativo, Control de Nóminas y Planificación Técnica'
+                  : 'Usuario verificado: Sensei Milton Echeverría (ADMIN GENERAL)'}
               </Text>
             </View>
           </View>
@@ -82,114 +92,150 @@ export const LoginScreen: React.FC = () => {
           </View>
         ) : null}
 
-        {/* Formulario de Fachada de Credenciales */}
-        <View style={styles.sectionBlock}>
-          <Text style={styles.sectionTitle}>1. CREDENCIALES DE ACCESO:</Text>
+        {/* =========================================================================
+            VENTANA 1: FORMULARIO DE INGRESO (SOLO CREDENCIALES)
+           ========================================================================= */}
+        {step === 'CREDENTIALS' && (
+          <>
+            <View style={styles.sectionBlock}>
+              <Text style={styles.sectionTitle}>CREDENCIALES DE INGRESO:</Text>
 
-          <View style={styles.inputGroup}>
-            <Text style={styles.inputLabel}>RUT O CORREO INSTITUCIONAL</Text>
-            <TextInput
-              style={styles.textInput}
-              value={identificador}
-              onChangeText={setIdentificador}
-              placeholder="Ej: 14.285.923-1 o admin@dojoshitoryu.cl"
-              placeholderTextColor={colors.textDim}
-              autoCapitalize="none"
-            />
-          </View>
+              <View style={styles.inputGroup}>
+                <Text style={styles.inputLabel}>RUT O CORREO INSTITUCIONAL</Text>
+                <TextInput
+                  style={styles.textInput}
+                  value={identificador}
+                  onChangeText={setIdentificador}
+                  placeholder="Ej: 14.285.923-1 o admin@dojoshitoryu.cl"
+                  placeholderTextColor={colors.textDim}
+                  autoCapitalize="none"
+                />
+              </View>
 
-          <View style={[styles.inputGroup, { marginTop: 12 }]}>
-            <Text style={styles.inputLabel}>CONTRASEÑA DE SEGURIDAD</Text>
-            <TextInput
-              style={styles.textInput}
-              value={password}
-              onChangeText={setPassword}
-              secureTextEntry
-              placeholder="Ingresa tu clave"
-              placeholderTextColor={colors.textDim}
-            />
-          </View>
-        </View>
+              <View style={[styles.inputGroup, { marginTop: 14 }]}>
+                <Text style={styles.inputLabel}>CONTRASEÑA DE SEGURIDAD</Text>
+                <TextInput
+                  style={styles.textInput}
+                  value={password}
+                  onChangeText={setPassword}
+                  secureTextEntry
+                  placeholder="Ingresa tu clave"
+                  placeholderTextColor={colors.textDim}
+                />
+              </View>
+            </View>
 
-        {/* Selector de Sede a Administrar */}
-        <View style={styles.sectionBlock}>
-          <Text style={styles.sectionTitle}>2. SELECCIONA LA SEDE O ESCUELA A ADMINISTRAR:</Text>
-          <View style={styles.academiaList}>
-            {academias.map((a, idx) => {
-              const isSelected = selectedAcademiaId === a.id;
-              return (
-                <TouchableOpacity
-                  key={a.id}
-                  style={[
-                    styles.academiaOption,
-                    isSelected && styles.academiaOptionSelected,
-                  ]}
-                  onPress={() => setSelectedAcademiaId(a.id)}
-                  activeOpacity={0.85}
-                >
-                  <View
-                    style={[
-                      styles.indicatorBar,
-                      isSelected && styles.indicatorBarActive,
-                    ]}
-                  />
-                  <View style={{ flex: 1 }}>
-                    <Text
+            <View style={styles.actionBlock}>
+              <TouchableOpacity
+                style={styles.enterButton}
+                onPress={handleValidateCredentials}
+                activeOpacity={0.85}
+              >
+                <Text style={styles.enterButtonText}>
+                  INGRESAR AL SISTEMA ➔
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.publicLinkButton}
+                onPress={handleOpenPublicForm}
+                activeOpacity={0.85}
+              >
+                <Text style={styles.publicLinkText}>
+                  IR AL FORMULARIO PÚBLICO DE MATRÍCULA ONLINE
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </>
+        )}
+
+        {/* =========================================================================
+            VENTANA 2: SELECCIONAR ACADEMIA / SEDE A ADMINISTRAR
+           ========================================================================= */}
+        {step === 'SELECT_ACADEMIA' && (
+          <>
+            <View style={styles.sectionBlock}>
+              <Text style={styles.sectionTitle}>SELECCIONA LA SEDE O ESCUELA A ADMINISTRAR:</Text>
+              <Text style={styles.stepHelpText}>
+                Elige la academia con la que deseas operar en esta sesión de trabajo:
+              </Text>
+
+              <View style={styles.academiaList}>
+                {academias.map((a) => {
+                  const isSelected = selectedAcademiaId === a.id;
+                  return (
+                    <TouchableOpacity
+                      key={a.id}
                       style={[
-                        styles.academiaName,
-                        isSelected && styles.academiaNameSelected,
+                        styles.academiaOption,
+                        isSelected && styles.academiaOptionSelected,
                       ]}
+                      onPress={() => setSelectedAcademiaId(a.id)}
+                      activeOpacity={0.85}
                     >
-                      {a.nombre}
-                    </Text>
-                    <Text style={styles.academiaAddress}>
-                      {a.direccion || 'Sede oficial'}
-                    </Text>
-                  </View>
-                  <View
-                    style={[
-                      styles.statusPill,
-                      isSelected && styles.statusPillActive,
-                    ]}
-                  >
-                    <Text
-                      style={[
-                        styles.statusPillText,
-                        isSelected && styles.statusPillTextActive,
-                      ]}
-                    >
-                      {isSelected ? '✓ SELECCIONADA' : 'ELEGIR'}
-                    </Text>
-                  </View>
-                </TouchableOpacity>
-              );
-            })}
-          </View>
-        </View>
+                      <View
+                        style={[
+                          styles.indicatorBar,
+                          isSelected && styles.indicatorBarActive,
+                        ]}
+                      />
+                      <View style={{ flex: 1 }}>
+                        <Text
+                          style={[
+                            styles.academiaName,
+                            isSelected && styles.academiaNameSelected,
+                          ]}
+                        >
+                          {a.nombre}
+                        </Text>
+                        <Text style={styles.academiaAddress}>
+                          {a.direccion || 'Sede oficial central'}
+                        </Text>
+                      </View>
+                      <View
+                        style={[
+                          styles.statusPill,
+                          isSelected && styles.statusPillActive,
+                        ]}
+                      >
+                        <Text
+                          style={[
+                            styles.statusPillText,
+                            isSelected && styles.statusPillTextActive,
+                          ]}
+                        >
+                          {isSelected ? '✓ SELECCIONADA' : 'ELEGIR'}
+                        </Text>
+                      </View>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+            </View>
 
-        {/* Botón Principal de Ingreso */}
-        <View style={styles.actionBlock}>
-          <TouchableOpacity
-            style={styles.enterButton}
-            onPress={handleLogin}
-            activeOpacity={0.85}
-          >
-            <Text style={styles.enterButtonText}>
-              INICIAR SESIÓN Y ACCEDER AL SISTEMA ➔
-            </Text>
-          </TouchableOpacity>
+            <View style={styles.actionBlock}>
+              <TouchableOpacity
+                style={styles.enterButton}
+                onPress={handleConfirmLogin}
+                activeOpacity={0.85}
+              >
+                <Text style={styles.enterButtonText}>
+                  ACCEDER AL DOJO CON ESTA SEDE ➔
+                </Text>
+              </TouchableOpacity>
 
-          {/* Enlace al Formulario Público de Matrícula */}
-          <TouchableOpacity
-            style={styles.publicLinkButton}
-            onPress={handleOpenPublicForm}
-            activeOpacity={0.85}
-          >
-            <Text style={styles.publicLinkText}>
-              IR AL FORMULARIO PÚBLICO DE MATRÍCULA ONLINE
-            </Text>
-          </TouchableOpacity>
-        </View>
+              <TouchableOpacity
+                style={styles.publicLinkButton}
+                onPress={() => setStep('CREDENTIALS')}
+                activeOpacity={0.85}
+              >
+                <Text style={styles.publicLinkText}>
+                  ← VOLVER / CAMBIAR CREDENCIALES
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </>
+        )}
 
         <View style={styles.footerNote}>
           <Text style={styles.footerText}>
@@ -208,10 +254,11 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     padding: 24,
+    width: '100%',
   },
   card: {
     width: '100%',
-    maxWidth: 620,
+    maxWidth: 580,
     backgroundColor: colors.bgCard,
     borderWidth: 1,
     borderColor: colors.borderLight,
@@ -257,7 +304,7 @@ const styles = StyleSheet.create({
     color: colors.primary,
   },
   title: {
-    fontSize: 18,
+    fontSize: 17,
     fontWeight: '900',
     color: colors.textPrimary,
     letterSpacing: 0.5,
@@ -290,7 +337,12 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '900',
     letterSpacing: 1,
-    marginBottom: 12,
+    marginBottom: 8,
+  },
+  stepHelpText: {
+    color: colors.textDim,
+    fontSize: 12,
+    marginBottom: 14,
   },
   inputGroup: {
     gap: 6,

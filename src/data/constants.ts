@@ -33,24 +33,6 @@ export const ACADEMIAS_DISPONIBLES: Academia[] = [
     email: 'contacto@shitoryurancagua.cl',
     created_at: '2024-01-01',
   },
-  {
-    id: 'acad-machali',
-    nombre: 'Sede Machalí Cordillera',
-    rut_titular: '14.285.923-1',
-    direccion: 'Av. San Juan #1050, Machalí',
-    telefono: '+56 9 8452 1190',
-    email: 'machali@shitoryurancagua.cl',
-    created_at: '2024-02-01',
-  },
-  {
-    id: 'acad-requinoa',
-    nombre: 'Sede Requínoa El Abra',
-    rut_titular: '14.285.923-1',
-    direccion: 'Camino El Abra s/n, Requínoa',
-    telefono: '+56 9 8452 1190',
-    email: 'requinoa@shitoryurancagua.cl',
-    created_at: '2024-03-01',
-  },
 ];
 
 export const USUARIOS_DISPONIBLES: Usuario[] = [
@@ -61,7 +43,7 @@ export const USUARIOS_DISPONIBLES: Usuario[] = [
     rol: 'ADMIN_GENERAL', // Dueño y Administrador Total
     telefono: '+56 9 8452 1190',
     activo: true,
-    academias: [ACADEMIAS_DISPONIBLES[0], ACADEMIAS_DISPONIBLES[1], ACADEMIAS_DISPONIBLES[2]],
+    academias: [ACADEMIAS_DISPONIBLES[0]],
   },
 ];
 
