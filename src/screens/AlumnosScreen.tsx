@@ -29,7 +29,7 @@ export const AlumnosScreen: React.FC = () => {
   const [mobileTab, setMobileTab] = useState<'LIST' | 'DETAIL'>('LIST');
 
   const [search, setSearch] = useState('');
-  type FilterAgeGroup = 'ALL' | 'PREESCOLAR' | 'ADOLESCENTES' | 'ADULTOS';
+  type FilterAgeGroup = 'ALL' | 'GRUPO_I' | 'GRUPO_II' | 'ADOLESCENTES' | 'ADULTOS';
   const [filterSection, setFilterSection] = useState<FilterAgeGroup>('ALL');
 
   // Control de scroll horizontal con botones para computadoras sin touchpad
@@ -52,39 +52,11 @@ export const AlumnosScreen: React.FC = () => {
   const targetAcademiaId = currentAcademia?.id || CENTRAL_ACADEMIA_ID;
   const schoolStudents = students.filter((s) => matchAcademia(s.academia_id, targetAcademiaId));
 
-  // Cálculo de conteos por grupo etario en esta sede
-  const countPreescolar = schoolStudents.filter((s) => {
-    if (s.seccion_id === 'sec-1' || s.seccion_id === 'sec-2') return true;
-    if (s.fecha_nacimiento) {
-      const parts = s.fecha_nacimiento.split('-');
-      const y = parseInt(parts[0], 10);
-      const age = new Date().getFullYear() - y;
-      return age >= 4 && age <= 6;
-    }
-    return false;
-  }).length;
-
-  const countAdolescentes = schoolStudents.filter((s) => {
-    if (s.seccion_id === 'sec-3') return true;
-    if (s.fecha_nacimiento) {
-      const parts = s.fecha_nacimiento.split('-');
-      const y = parseInt(parts[0], 10);
-      const age = new Date().getFullYear() - y;
-      return age >= 7 && age <= 15;
-    }
-    return false;
-  }).length;
-
-  const countAdultos = schoolStudents.filter((s) => {
-    if (s.seccion_id === 'sec-4') return true;
-    if (s.fecha_nacimiento) {
-      const parts = s.fecha_nacimiento.split('-');
-      const y = parseInt(parts[0], 10);
-      const age = new Date().getFullYear() - y;
-      return age >= 16;
-    }
-    return false;
-  }).length;
+  // Cálculo de conteos por grupo etario oficial en esta sede
+  const countGrupoI = schoolStudents.filter((s) => s.seccion_id === 'sec-1').length;
+  const countGrupoII = schoolStudents.filter((s) => s.seccion_id === 'sec-2').length;
+  const countAdolescentes = schoolStudents.filter((s) => s.seccion_id === 'sec-3').length;
+  const countAdultos = schoolStudents.filter((s) => s.seccion_id === 'sec-4').length;
 
   // Alumno seleccionado dentro de la escuela activa
   const selectedStudent = schoolStudents.find((s) => s.id === selectedStudentId) || schoolStudents[0] || null;
@@ -93,6 +65,7 @@ export const AlumnosScreen: React.FC = () => {
   const [editPeso, setEditPeso] = useState<string>('');
   const [editRut, setEditRut] = useState<string>('');
   const [editDob, setEditDob] = useState<string>('');
+  const [editFechaIngreso, setEditFechaIngreso] = useState<string>('');
   const [editColegio, setEditColegio] = useState<string>('');
   const [editTallaPolera, setEditTallaPolera] = useState<string>('');
   const [editTallaPantalon, setEditTallaPantalon] = useState<string>('');
@@ -115,36 +88,10 @@ export const AlumnosScreen: React.FC = () => {
 
     const matchesSection = (() => {
       if (filterSection === 'ALL') return true;
-      if (filterSection === 'PREESCOLAR') {
-        if (s.seccion_id === 'sec-1' || s.seccion_id === 'sec-2') return true;
-        if (s.fecha_nacimiento) {
-          const parts = s.fecha_nacimiento.split('-');
-          const y = parseInt(parts[0], 10);
-          const age = new Date().getFullYear() - y;
-          return age >= 4 && age <= 6;
-        }
-        return false;
-      }
-      if (filterSection === 'ADOLESCENTES') {
-        if (s.seccion_id === 'sec-3') return true;
-        if (s.fecha_nacimiento) {
-          const parts = s.fecha_nacimiento.split('-');
-          const y = parseInt(parts[0], 10);
-          const age = new Date().getFullYear() - y;
-          return age >= 7 && age <= 15;
-        }
-        return false;
-      }
-      if (filterSection === 'ADULTOS') {
-        if (s.seccion_id === 'sec-4') return true;
-        if (s.fecha_nacimiento) {
-          const parts = s.fecha_nacimiento.split('-');
-          const y = parseInt(parts[0], 10);
-          const age = new Date().getFullYear() - y;
-          return age >= 16;
-        }
-        return false;
-      }
+      if (filterSection === 'GRUPO_I') return s.seccion_id === 'sec-1';
+      if (filterSection === 'GRUPO_II') return s.seccion_id === 'sec-2';
+      if (filterSection === 'ADOLESCENTES') return s.seccion_id === 'sec-3';
+      if (filterSection === 'ADULTOS') return s.seccion_id === 'sec-4';
       return true;
     })();
 
@@ -156,6 +103,7 @@ export const AlumnosScreen: React.FC = () => {
     setEditPeso(s.peso_actual_kg ? s.peso_actual_kg.toString() : '');
     setEditRut(s.rut || '');
     setEditDob(s.fecha_nacimiento || '');
+    setEditFechaIngreso(s.fecha_ingreso || '');
     setEditColegio(s.lugar_estudio_trabajo || '');
     setEditTallaPolera(s.talla_polera || 'M');
     setEditTallaPantalon(s.talla_pantalon || 'Talla 3');
@@ -203,6 +151,7 @@ export const AlumnosScreen: React.FC = () => {
       peso_actual_kg: isNaN(pesoNum as any) ? undefined : pesoNum,
       rut: editRut.trim() || undefined,
       fecha_nacimiento: editDob.trim() || undefined,
+      fecha_ingreso: editFechaIngreso.trim() || undefined,
       lugar_estudio_trabajo: editColegio.trim() || undefined,
       talla_polera: editTallaPolera.trim() || undefined,
       talla_pantalon: editTallaPantalon.trim() || undefined,
@@ -334,11 +283,20 @@ export const AlumnosScreen: React.FC = () => {
               </TouchableOpacity>
 
               <TouchableOpacity
-                style={[styles.filterPill, filterSection === 'PREESCOLAR' && styles.filterPillActive]}
-                onPress={() => setFilterSection('PREESCOLAR')}
+                style={[styles.filterPill, filterSection === 'GRUPO_I' && styles.filterPillActive]}
+                onPress={() => setFilterSection('GRUPO_I')}
               >
-                <Text style={[styles.filterPillText, filterSection === 'PREESCOLAR' && styles.filterPillTextActive]}>
-                  PREESCOLAR (4-6) ({countPreescolar})
+                <Text style={[styles.filterPillText, filterSection === 'GRUPO_I' && styles.filterPillTextActive]}>
+                  GRUPO I (4-6) ({countGrupoI})
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.filterPill, filterSection === 'GRUPO_II' && styles.filterPillActive]}
+                onPress={() => setFilterSection('GRUPO_II')}
+              >
+                <Text style={[styles.filterPillText, filterSection === 'GRUPO_II' && styles.filterPillTextActive]}>
+                  GRUPO II (4-6) ({countGrupoII})
                 </Text>
               </TouchableOpacity>
 
@@ -524,6 +482,17 @@ export const AlumnosScreen: React.FC = () => {
                         placeholderTextColor={colors.textDim}
                       />
                     </View>
+
+                    <View style={[styles.formCol, { flex: 1 }]}>
+                      <Text style={styles.label}>Fecha de Ingreso Dojo (AAAA-MM-DD):</Text>
+                      <TextInput
+                        style={styles.input}
+                        value={editFechaIngreso}
+                        onChangeText={setEditFechaIngreso}
+                        placeholder="Ej: 2024-01-01"
+                        placeholderTextColor={colors.textDim}
+                      />
+                    </View>
                   </View>
 
                   <View style={[styles.formRow, isMobile && { flexDirection: 'column' }]}>
@@ -666,9 +635,29 @@ export const AlumnosScreen: React.FC = () => {
                     </View>
 
                     <View style={styles.techItem}>
+                      <Text style={styles.techItemLabel}>GRUPO ETARIO / SECCIÓN</Text>
+                      <Text style={[styles.techItemVal, { color: colors.textPrimary, fontWeight: '700' }]}>
+                        {selectedStudent.seccion_id === 'sec-1'
+                          ? 'Pequeños 4-6 Años (Grupo I)'
+                          : selectedStudent.seccion_id === 'sec-2'
+                          ? 'Pequeños 4-6 Años (Grupo II)'
+                          : selectedStudent.seccion_id === 'sec-3'
+                          ? 'Adolescentes (7-15 Años)'
+                          : 'Jóvenes y Adultos (16+ Años)'}
+                      </Text>
+                    </View>
+
+                    <View style={styles.techItem}>
                       <Text style={styles.techItemLabel}>FECHA DE NACIMIENTO</Text>
                       <Text style={styles.techItemVal}>
                         {selectedStudent.fecha_nacimiento || 'Sin registrar'}
+                      </Text>
+                    </View>
+
+                    <View style={styles.techItem}>
+                      <Text style={styles.techItemLabel}>FECHA DE INGRESO A LA ACADEMIA</Text>
+                      <Text style={styles.techItemVal}>
+                        {selectedStudent.fecha_ingreso || 'Sin registrar'}
                       </Text>
                     </View>
 

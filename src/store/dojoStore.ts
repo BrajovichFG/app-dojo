@@ -136,13 +136,14 @@ const initialStudents: Alumno[] = (rawStudents as any[]).map((s, index) => ({
   id: s.id || `alu-${index + 1}`,
   academia_id: 'acad-1',
   seccion_id:
-    s.seccion === 'Pequeños 4-6 Años (Grupo I)'
+    s.seccion_id ||
+    (s.seccion === 'Pequeños 4-6 Años (Grupo I)'
       ? 'sec-1'
       : s.seccion === 'Pequeños 4-6 Años (Grupo II)'
       ? 'sec-2'
       : s.seccion === 'Adolescentes'
       ? 'sec-3'
-      : 'sec-4',
+      : 'sec-4'),
   cinturon_id: 1, // Blanco
   nombres: s.nombres || s.nombre_completo,
   apellidos: s.apellidos || '',
