@@ -198,3 +198,31 @@ export interface Comprobante {
   enviado_whatsapp: boolean;
   fecha_emision: string;
 }
+
+export interface SolicitudMatricula {
+  id: string;
+  created_at: string;
+  nombres: string;
+  apellidos: string;
+  rut?: string;
+  fecha_nacimiento?: string;
+  genero?: 'M' | 'F';
+  peso_actual_kg?: number;
+  direccion?: string;
+  lugar_estudio_trabajo?: string;
+  talla_polera?: string;
+  talla_pantalon?: string;
+  cinturon_id: number;
+  escuela_origen?: string;
+  academia_id?: string;
+  nombre_apoderado: string;
+  rut_apoderado?: string;
+  telefono_apoderado: string;
+  email_apoderado?: string;
+  parentesco_apoderado?: string;
+  dia_pago_mensual?: number;
+  estado: 'PENDIENTE' | 'APROBADA' | 'RECHAZADA';
+  fecha_revision?: string;
+  revisado_por?: string;
+  notas_revision?: string;
+}

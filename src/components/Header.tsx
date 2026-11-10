@@ -15,6 +15,8 @@ export const Header: React.FC = () => {
   const students = useDojoStore((state) => state.students);
   const studentsCount = students.length;
   const supabaseSyncStatus = useDojoStore((state) => state.supabaseSyncStatus);
+  const solicitudesMatricula = useDojoStore((state) => state.solicitudesMatricula);
+  const pendingSolCount = solicitudesMatricula.filter((s) => s.estado === 'PENDIENTE').length;
 
   const { isMobile } = useResponsive();
   const [showAcademiaMenu, setShowAcademiaMenu] = useState(false);
@@ -55,7 +57,7 @@ export const Header: React.FC = () => {
     { key: 'mensualidades', label: 'MENSUALIDADES', icon: '💰' },
     { key: 'torneos', label: 'EVENTOS Y EXÁMENES', icon: '🏆' },
     { key: 'registro_publico', label: 'LINK MATRÍCULA', icon: '📲' },
-    { key: 'configuracion', label: 'CONFIGURACIONES', icon: '⚙️' },
+    { key: 'configuracion', label: pendingSolCount > 0 ? `CONFIGURACIÓN (${pendingSolCount})` : 'CONFIGURACIÓN', icon: '⚙️' },
   ];
 
   return (

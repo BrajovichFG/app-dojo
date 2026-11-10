@@ -1,12 +1,29 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TextInput, TouchableOpacity } from 'react-native';
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  TextInput,
+  TouchableOpacity,
+  Platform,
+} from 'react-native';
 import { useDojoStore } from '../store/dojoStore';
-import { calcularEdadDescriptiva, formatearRut, validarRut } from '../utils/karateEngine';
-import { GRADOS_CINTURON, CENTRAL_ACADEMIA_ID } from '../data/constants';
-import { colors, radii, useResponsive } from '../theme/theme';
+import { calcularEdadDescriptiva, formatearRut } from '../utils/karateEngine';
+import { GRADOS_CINTURON } from '../data/constants';
+import { colors, useResponsive } from '../theme/theme';
 
-export const RegistroPublicoScreen: React.FC = () => {
-  const addStudent = useDojoStore((state) => state.addStudent);
+interface RegistroPublicoProps {
+  isPublicView?: boolean;
+  onBackToLogin?: () => void;
+}
+
+export const RegistroPublicoScreen: React.FC<RegistroPublicoProps> = ({
+  isPublicView = false,
+  onBackToLogin,
+}) => {
+  const addSolicitudMatricula = useDojoStore((state) => state.addSolicitudMatricula);
+  const solicitudesMatricula = useDojoStore((state) => state.solicitudesMatricula);
   const setTab = useDojoStore((state) => state.setTab);
   const academias = useDojoStore((state) => state.academias);
   const currentAcademia = useDojoStore((state) => state.currentAcademia);
@@ -37,12 +54,16 @@ export const RegistroPublicoScreen: React.FC = () => {
   const [apoderadoNombre, setApoderadoNombre] = useState('');
   const [apoderadoRut, setApoderadoRut] = useState('');
   const [apoderadoTelefono, setApoderadoTelefono] = useState('+56 9 ');
-  const [apoderadoEdad, setApoderadoEdad] = useState('');
+  const [apoderadoEmail, setApoderadoEmail] = useState('');
+  const [apoderadoParentesco, setApoderadoParentesco] = useState('Padre');
   const [diaPago, setDiaPago] = useState('5');
 
   // Estado de éxito
   const [submitted, setSubmitted] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
+  const [copiedLink, setCopiedLink] = useState(false);
+
+  const solicitudesPendientesCount = solicitudesMatricula.filter((s) => s.estado === 'PENDIENTE').length;
 
   // Formateador de Fecha DD-MM-YYYY
   const handleDobChange = (text: string) => {
@@ -69,6 +90,18 @@ export const RegistroPublicoScreen: React.FC = () => {
     return clean;
   };
 
+  const handleCopyPublicLink = () => {
+    const url = typeof window !== 'undefined'
+      ? `${window.location.origin}/?matricula=1`
+      : 'https://dojoshitoryu.cl/?matricula=1';
+
+    if (typeof navigator !== 'undefined' && navigator.clipboard) {
+      navigator.clipboard.writeText(url).catch(() => {});
+    }
+    setCopiedLink(true);
+    setTimeout(() => setCopiedLink(false), 2500);
+  };
+
   const handleSubmit = () => {
     if (!nombres.trim() || !apellidos.trim()) {
       setErrorMessage('Por favor ingresa los nombres y apellidos del alumno.');
@@ -84,10 +117,7 @@ export const RegistroPublicoScreen: React.FC = () => {
     const pesoNum = peso ? parseFloat(peso.replace(',', '.')) : undefined;
     const fechaNorm = normalizarFecha(dob);
 
-    addStudent({
-      academia_id: selectedAcademiaId ? selectedAcademiaId : undefined,
-      seccion_id: 'sec-3', // Por defecto adolescentes, el sensei confirmará
-      cinturon_id: cinturonId,
+    addSolicitudMatricula({
       nombres: nombres.trim(),
       apellidos: apellidos.trim(),
       rut: rut.trim() || undefined,
@@ -98,53 +128,188 @@ export const RegistroPublicoScreen: React.FC = () => {
       lugar_estudio_trabajo: estudio.trim() || undefined,
       talla_polera: tallaPolera,
       talla_pantalon: tallaPantalon,
+      cinturon_id: cinturonId,
+      escuela_origen: escuelaOrigen.trim() || undefined,
+      academia_id: selectedAcademiaId || undefined,
+      nombre_apoderado: apoderadoNombre.trim(),
+      rut_apoderado: apoderadoRut.trim() || undefined,
+      telefono_apoderado: apoderadoTelefono.trim(),
+      email_apoderado: apoderadoEmail.trim() || undefined,
+      parentesco_apoderado: apoderadoParentesco,
       dia_pago_mensual: parseInt(diaPago, 10) || 5,
-      estado: 'ACTIVO',
-      es_competidor: false,
-      fecha_ingreso: new Date().toISOString().split('T')[0],
     });
 
     setSubmitted(true);
   };
 
+  const handleResetForm = () => {
+    setNombres('');
+    setApellidos('');
+    setRut('');
+    setDob('');
+    setPeso('');
+    setDireccion('');
+    setEstudio('');
+    setApoderadoNombre('');
+    setApoderadoRut('');
+    setApoderadoTelefono('+56 9 ');
+    setApoderadoEmail('');
+    setEscuelaOrigen('');
+    setSubmitted(false);
+  };
+
   const fechaParaCalculo = normalizarFecha(dob);
   const edadDescriptiva = fechaParaCalculo ? calcularEdadDescriptiva(fechaParaCalculo) : null;
   const currentSelectedAcademia = academias.find((a) => a.id === selectedAcademiaId);
+  const selectedBelt = GRADOS_CINTURON.find((g) => g.id === cinturonId) || GRADOS_CINTURON[0];
 
+  // =========================================================================
+  // VISTA DE CONFIRMACIÓN TRAS ENVIAR LA SOLICITUD
+  // =========================================================================
   if (submitted) {
     return (
       <View style={styles.successContainer}>
         <View style={styles.successCard}>
-          <Text style={styles.successTitle}>¡INSCRIPCIÓN REGISTRADA CON ÉXITO!</Text>
-          <Text style={styles.successDesc}>
-            Bienvenido a {currentAcademia?.nombre || 'Dojo Shito Ryu'}. Los datos de{' '}
-            <Text style={{ fontWeight: '800', color: colors.textPrimary }}>
-              {nombres} {apellidos}
-            </Text>{' '}
-            han sido guardados en el sistema del dojo. El Sensei validará los antecedentes para su primera clase.
-          </Text>
+          <View style={styles.successRibbon}>
+            <Text style={styles.successRibbonText}>SOLICITUD ENVIADA • EN ESPERA DE CONFIRMACIÓN</Text>
+          </View>
 
-          <TouchableOpacity style={styles.backBtn} onPress={() => setTab('dashboard')}>
-            <Text style={styles.backBtnText}>IR AL DASHBOARD DEL DOJO ➔</Text>
-          </TouchableOpacity>
+          <View style={styles.successBody}>
+            <View style={styles.successIconBox}>
+              <Text style={styles.successIcon}>✓</Text>
+            </View>
+
+            <Text style={styles.successTitle}>¡SOLICITUD DE MATRÍCULA RECIBIDA CON ÉXITO!</Text>
+
+            <Text style={styles.successDesc}>
+              Muchas gracias por postular a{' '}
+              <Text style={{ fontWeight: '900', color: colors.textPrimary }}>
+                Dojo Shito Ryu Kyokan Genbukai Rancagua
+              </Text>
+              . Los antecedentes de{' '}
+              <Text style={{ fontWeight: '900', color: colors.primary }}>
+                {nombres} {apellidos}
+              </Text>{' '}
+              han ingresado a la bandeja de{' '}
+              <Text style={{ fontWeight: '900', color: colors.accent }}>"Solicitud de Alumnos"</Text> del
+              Sensei Milton Echeverría. Tu ingreso quedará formalizado tras la confirmación técnica y asignación de
+              sede.
+            </Text>
+
+            {/* Resumen de los datos recibidos */}
+            <View style={styles.summaryBox}>
+              <Text style={styles.summaryTitle}>RESUMEN DE LA POSTULACIÓN:</Text>
+              <Text style={styles.summaryItem}>• Deportista: <Text style={styles.summaryVal}>{nombres} {apellidos}</Text></Text>
+              {rut ? <Text style={styles.summaryItem}>• RUT Alumno: <Text style={styles.summaryVal}>{rut}</Text></Text> : null}
+              {dob ? <Text style={styles.summaryItem}>• Fecha Nacimiento: <Text style={styles.summaryVal}>{dob} ({edadDescriptiva || 'Edad calculada'})</Text></Text> : null}
+              <Text style={styles.summaryItem}>• Grado / Cinturón: <Text style={styles.summaryVal}>{selectedBelt.nombre}</Text></Text>
+              <Text style={styles.summaryItem}>• Sede Solicitada: <Text style={styles.summaryVal}>{currentSelectedAcademia?.nombre || 'Por asignar por el Sensei'}</Text></Text>
+              <Text style={styles.summaryItem}>• Apoderado: <Text style={styles.summaryVal}>{apoderadoNombre} ({apoderadoTelefono})</Text></Text>
+            </View>
+
+            {/* Botones de Acción */}
+            <View style={styles.successActionsCol}>
+              <TouchableOpacity style={styles.newSubmissionBtn} onPress={handleResetForm} activeOpacity={0.85}>
+                <Text style={styles.newSubmissionBtnText}>+ INSCRIBIR A OTRO ALUMNO</Text>
+              </TouchableOpacity>
+
+              {isPublicView && onBackToLogin ? (
+                <TouchableOpacity style={styles.backToLoginBtn} onPress={onBackToLogin} activeOpacity={0.85}>
+                  <Text style={styles.backToLoginBtnText}>🔒 ACCESO ADMINISTRATIVO (SENSEI / PROFESORES)</Text>
+                </TouchableOpacity>
+              ) : (
+                <TouchableOpacity
+                  style={styles.backToDashboardBtn}
+                  onPress={() => setTab('configuracion')}
+                  activeOpacity={0.85}
+                >
+                  <Text style={styles.backToDashboardBtnText}>
+                    IR A "SOLICITUD DE ALUMNOS" EN CONFIGURACIONES ➔
+                  </Text>
+                </TouchableOpacity>
+              )}
+            </View>
+          </View>
         </View>
       </View>
     );
   }
 
+  // =========================================================================
+  // VISTA PRINCIPAL DEL FORMULARIO
+  // =========================================================================
   return (
     <ScrollView style={styles.container} contentContainerStyle={[styles.content, isMobile && { padding: 12 }]}>
-      <View style={[styles.formCard, isMobile && { width: '100%', borderRadius: radii.lg }]}>
+      {/* Si se visualiza desde el sistema administrativo, mostrar tarjeta gestora de enlace */}
+      {!isPublicView && (
+        <View style={styles.adminShareCard}>
+          <View style={styles.adminShareRibbon}>
+            <Text style={styles.adminShareRibbonText}>
+              PANEL ADMINISTRATIVO • GESTOR DE ENLACE DE MATRÍCULA ONLINE
+            </Text>
+          </View>
+          <View style={[styles.adminShareBody, isMobile && { flexDirection: 'column', gap: 14 }]}>
+            <View style={{ flex: 1, gap: 6 }}>
+              <Text style={styles.adminShareTitle}>
+                Enlace Oficial para Enviar a Apoderados por WhatsApp y Redes
+              </Text>
+              <Text style={styles.adminShareDesc}>
+                Este enlace funciona 100% fuera del dashboard administrativo. Los apoderados completan su ficha de
+                forma independiente y las respuestas entran directamente a la bandeja "Solicitud de Alumnos" en
+                Configuraciones para su posterior aprobación.
+              </Text>
+              <View style={styles.urlShareBox}>
+                <Text style={styles.urlShareText} numberOfLines={1}>
+                  https://dojoshitoryu.cl/?matricula=1
+                </Text>
+              </View>
+            </View>
+
+            <View style={styles.adminShareBtnCol}>
+              <TouchableOpacity
+                style={styles.btnCopyShareUrl}
+                onPress={handleCopyPublicLink}
+                activeOpacity={0.85}
+              >
+                <Text style={styles.btnCopyShareUrlText}>
+                  {copiedLink ? '✓ ¡ENLACE COPIADO!' : 'COPIAR LINK PARA WHATSAPP'}
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.btnGoToRequests}
+                onPress={() => setTab('configuracion')}
+                activeOpacity={0.85}
+              >
+                <Text style={styles.btnGoToRequestsText}>
+                  VER SOLICITUDES ({solicitudesPendientesCount} PENDIENTES) ➔
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      )}
+
+      {/* Tarjeta del Formulario de Matrícula */}
+      <View style={[styles.formCard, isMobile && { width: '100%' }]}>
         {/* Cinta Superior Oficial */}
         <View style={styles.formRibbonTop}>
-          <Text style={styles.formRibbonTopText}>PORTAL OFICIAL DE MATRÍCULA ONLINE — SHITO RYU KYOKAN GENBUKAI</Text>
+          <Text style={styles.formRibbonTopText}>
+            PORTAL OFICIAL DE MATRÍCULA ONLINE — SHITO RYU KYOKAN GENBUKAI
+          </Text>
+          {isPublicView && onBackToLogin ? (
+            <TouchableOpacity onPress={onBackToLogin} style={styles.headerSenseiBtn} activeOpacity={0.8}>
+              <Text style={styles.headerSenseiBtnText}>🔒 Acceso Sensei</Text>
+            </TouchableOpacity>
+          ) : null}
         </View>
 
         {/* Encabezado con Selector Desplegable Corto de Academia / Sede */}
         <View style={styles.formHeader}>
           <Text style={styles.formTitle}>FICHA DE POSTULACIÓN E INSCRIPCIÓN DEPORTIVA</Text>
           <Text style={styles.formDesc}>
-            Completa los antecedentes del deportista para registrar su ingreso oficial al dojo.
+            Completa los antecedentes del deportista para registrar su ingreso oficial al dojo. Esta postulación será
+            revisada por el Sensei antes de su incorporación definitiva.
           </Text>
 
           {/* Menú desplegable corto hacia abajo para elegir Academia y Sede */}
@@ -191,7 +356,7 @@ export const RegistroPublicoScreen: React.FC = () => {
                   }}
                 >
                   <Text style={[styles.schoolDropdownItemText, { color: colors.accent }]}>
-                    ⚠️ Sin sede asignada (Asignar en Configuraciones)
+                    ⚠️ Sin sede asignada (El Sensei la definirá en Configuraciones)
                   </Text>
                   {selectedAcademiaId === '' && <Text style={{ color: colors.accent, fontWeight: '900' }}>✓</Text>}
                 </TouchableOpacity>
@@ -344,7 +509,7 @@ export const RegistroPublicoScreen: React.FC = () => {
             </View>
           </View>
 
-          {/* Selector de Grado / Cinturón */}
+          {/* Selector de Grado / Cinturón con kyu oficiales */}
           <View style={styles.beltSelectorBox}>
             <Text style={styles.label}>Grado / Cinturón de Ingreso</Text>
             <Text style={styles.beltSelectorHint}>
@@ -435,7 +600,7 @@ export const RegistroPublicoScreen: React.FC = () => {
           </View>
 
           <View style={[styles.row, isMobile && { flexDirection: 'column' }]}>
-            <View style={[styles.inputBox, { flex: 1.5 }]}>
+            <View style={[styles.inputBox, { flex: 1.2 }]}>
               <Text style={styles.label}>Teléfono WhatsApp *</Text>
               <TextInput
                 style={styles.input}
@@ -447,15 +612,27 @@ export const RegistroPublicoScreen: React.FC = () => {
               />
             </View>
 
-            <View style={[styles.inputBox, { flex: 1 }]}>
-              <Text style={styles.label}>Edad Apoderado</Text>
+            <View style={[styles.inputBox, { flex: 1.2 }]}>
+              <Text style={styles.label}>Correo Electrónico Apoderado</Text>
               <TextInput
                 style={styles.input}
-                placeholder="Ej: 42"
+                placeholder="apoderado@gmail.com"
                 placeholderTextColor={colors.textDim}
-                value={apoderadoEdad}
-                onChangeText={setApoderadoEdad}
-                keyboardType="numeric"
+                value={apoderadoEmail}
+                onChangeText={setApoderadoEmail}
+                keyboardType="email-address"
+                autoCapitalize="none"
+              />
+            </View>
+
+            <View style={[styles.inputBox, { flex: 0.8 }]}>
+              <Text style={styles.label}>Parentesco</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="Padre, Madre, Tutor"
+                placeholderTextColor={colors.textDim}
+                value={apoderadoParentesco}
+                onChangeText={setApoderadoParentesco}
               />
             </View>
           </View>
@@ -483,7 +660,7 @@ export const RegistroPublicoScreen: React.FC = () => {
 
         {/* Botón de Envío */}
         <TouchableOpacity style={styles.submitBtn} onPress={handleSubmit} activeOpacity={0.85}>
-          <Text style={styles.submitBtnText}>ENVIAR FICHA DE MATRÍCULA AL DOJO ➔</Text>
+          <Text style={styles.submitBtnText}>ENVIAR SOLICITUD DE MATRÍCULA AL DOJO ➔</Text>
         </TouchableOpacity>
       </View>
     </ScrollView>
@@ -501,12 +678,92 @@ const styles = StyleSheet.create({
   content: {
     padding: 24,
     alignItems: 'center',
+    gap: 16,
+  },
+  adminShareCard: {
+    backgroundColor: colors.bgCard,
+    borderWidth: 1,
+    borderColor: colors.primary,
+    borderRadius: 0,
+    maxWidth: 780,
+    width: '100%',
+    overflow: 'hidden',
+  },
+  adminShareRibbon: {
+    backgroundColor: colors.primary,
+    paddingVertical: 7,
+    paddingHorizontal: 16,
+  },
+  adminShareRibbonText: {
+    color: '#FFFFFF',
+    fontWeight: '900',
+    fontSize: 10,
+    letterSpacing: 1,
+  },
+  adminShareBody: {
+    padding: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 16,
+  },
+  adminShareTitle: {
+    color: colors.textPrimary,
+    fontSize: 14,
+    fontWeight: '900',
+  },
+  adminShareDesc: {
+    color: colors.textMuted,
+    fontSize: 11,
+    lineHeight: 16,
+  },
+  urlShareBox: {
+    backgroundColor: colors.bgInput,
+    borderWidth: 1,
+    borderColor: colors.borderSubtle,
+    padding: 8,
+    marginTop: 4,
+  },
+  urlShareText: {
+    color: colors.primary,
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  adminShareBtnCol: {
+    gap: 8,
+    minWidth: 220,
+  },
+  btnCopyShareUrl: {
+    backgroundColor: colors.primary,
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    borderRadius: 0,
+    alignItems: 'center',
+  },
+  btnCopyShareUrlText: {
+    color: '#FFFFFF',
+    fontSize: 11,
+    fontWeight: '900',
+    letterSpacing: 0.5,
+  },
+  btnGoToRequests: {
+    backgroundColor: colors.bgInput,
+    borderWidth: 1,
+    borderColor: colors.borderLight,
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    borderRadius: 0,
+    alignItems: 'center',
+  },
+  btnGoToRequestsText: {
+    color: colors.textSecondary,
+    fontSize: 10,
+    fontWeight: '800',
   },
   formCard: {
     backgroundColor: colors.bgCard,
     borderWidth: 1,
     borderColor: colors.borderLight,
-    borderRadius: radii.xl,
+    borderRadius: 0,
     maxWidth: 780,
     width: '100%',
     overflow: 'hidden',
@@ -515,6 +772,8 @@ const styles = StyleSheet.create({
     backgroundColor: colors.primary,
     paddingVertical: 8,
     paddingHorizontal: 16,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
   },
   formRibbonTopText: {
@@ -522,6 +781,18 @@ const styles = StyleSheet.create({
     fontWeight: '900',
     fontSize: 10,
     letterSpacing: 1.2,
+    flex: 1,
+  },
+  headerSenseiBtn: {
+    backgroundColor: 'rgba(0, 0, 0, 0.3)',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 0,
+  },
+  headerSenseiBtnText: {
+    color: '#FFFFFF',
+    fontSize: 10,
+    fontWeight: '800',
   },
   formHeader: {
     padding: 20,
@@ -555,41 +826,40 @@ const styles = StyleSheet.create({
     marginBottom: 6,
   },
   schoolDropdownTrigger: {
+    backgroundColor: colors.bgInput,
+    borderWidth: 1,
+    borderColor: colors.borderSubtle,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    backgroundColor: colors.bgCard,
-    borderWidth: 1,
-    borderColor: colors.borderLight,
-    paddingVertical: 10,
-    paddingHorizontal: 12,
   },
   schoolDropdownTriggerText: {
     color: colors.textPrimary,
-    fontSize: 13,
-    fontWeight: '800',
+    fontSize: 12,
+    fontWeight: '700',
     flex: 1,
   },
   schoolDropdownArrow: {
-    color: colors.primary,
-    fontSize: 11,
-    fontWeight: '900',
+    color: colors.textDim,
+    fontSize: 10,
     marginLeft: 8,
   },
   schoolDropdownMenu: {
-    marginTop: 6,
+    backgroundColor: colors.bgDarkest,
     borderWidth: 1,
     borderColor: colors.primary,
-    backgroundColor: colors.bgCard,
+    marginTop: 4,
   },
   schoolDropdownItem: {
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.borderSubtle,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: 10,
-    paddingHorizontal: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.borderSubtle,
   },
   schoolDropdownItemActive: {
     backgroundColor: 'rgba(255, 107, 0, 0.12)',
@@ -597,53 +867,52 @@ const styles = StyleSheet.create({
   schoolDropdownItemText: {
     color: colors.textSecondary,
     fontSize: 12,
-    fontWeight: '700',
+    fontWeight: '600',
+    flex: 1,
   },
   schoolDropdownItemTextActive: {
     color: colors.primary,
-    fontWeight: '900',
+    fontWeight: '800',
   },
   errorBanner: {
     backgroundColor: colors.dangerBg,
+    borderLeftWidth: 4,
+    borderLeftColor: colors.danger,
     padding: 12,
-    borderWidth: 1,
-    borderColor: colors.dangerBorder,
-    margin: 20,
-    marginBottom: 0,
-    borderRadius: radii.md,
+    marginHorizontal: 20,
+    marginTop: 16,
   },
   errorBannerText: {
     color: colors.danger,
-    fontWeight: '700',
     fontSize: 12,
+    fontWeight: '700',
   },
   fieldset: {
     padding: 20,
     borderBottomWidth: 1,
     borderBottomColor: colors.borderSubtle,
-    gap: 12,
+    gap: 14,
   },
   fieldsetTitle: {
-    color: colors.primary,
-    fontSize: 12,
+    color: colors.textPrimary,
+    fontSize: 13,
     fontWeight: '900',
-    letterSpacing: 0.8,
+    letterSpacing: 0.5,
   },
   fieldHint: {
     color: colors.textDim,
     fontSize: 11,
+    marginTop: -8,
   },
   row: {
     flexDirection: 'row',
     gap: 12,
-    flexWrap: 'wrap',
   },
   inputBox: {
-    gap: 4,
-    minWidth: 160,
+    gap: 6,
   },
   label: {
-    color: colors.textMuted,
+    color: colors.textSecondary,
     fontSize: 11,
     fontWeight: '700',
   },
@@ -651,56 +920,125 @@ const styles = StyleSheet.create({
     backgroundColor: colors.bgInput,
     borderWidth: 1,
     borderColor: colors.borderSubtle,
-    borderRadius: radii.md,
+    borderRadius: 0,
     paddingHorizontal: 12,
     paddingVertical: 10,
     color: colors.textPrimary,
     fontSize: 13,
   },
   calcAgeText: {
-    color: colors.primary,
-    fontSize: 11,
+    color: colors.accent,
+    fontSize: 10,
+    fontWeight: '800',
     marginTop: 2,
-    fontWeight: '700',
   },
   genderRow: {
     flexDirection: 'row',
-    gap: 6,
+    gap: 8,
   },
   genderBtn: {
     flex: 1,
-    paddingVertical: 10,
     backgroundColor: colors.bgInput,
     borderWidth: 1,
     borderColor: colors.borderSubtle,
-    borderRadius: radii.md,
+    paddingVertical: 10,
     alignItems: 'center',
+    borderRadius: 0,
   },
   genderBtnActive: {
-    backgroundColor: 'rgba(255, 107, 0, 0.12)',
     borderColor: colors.primary,
+    backgroundColor: 'rgba(255, 107, 0, 0.12)',
   },
   genderText: {
     color: colors.textDim,
-    fontWeight: '700',
     fontSize: 10,
+    fontWeight: '800',
   },
   genderTextActive: {
     color: colors.primary,
     fontWeight: '900',
   },
+  beltSelectorBox: {
+    gap: 8,
+    marginTop: 6,
+  },
+  beltSelectorHint: {
+    color: colors.textDim,
+    fontSize: 11,
+    lineHeight: 16,
+  },
+  beltsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+  },
+  beltOptionCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.bgInput,
+    borderWidth: 1,
+    borderColor: colors.borderSubtle,
+    paddingHorizontal: 8,
+    paddingVertical: 6,
+    gap: 8,
+    width: '49%',
+    borderRadius: 0,
+  },
+  beltOptionCardActive: {
+    borderColor: colors.primary,
+    backgroundColor: 'rgba(255, 107, 0, 0.12)',
+  },
+  beltColorIndicator: {
+    width: 14,
+    height: 14,
+    borderRadius: 0,
+  },
+  beltOptionName: {
+    color: colors.textSecondary,
+    fontSize: 10,
+    fontWeight: '700',
+    flex: 1,
+  },
+  beltOptionNameActive: {
+    color: colors.primary,
+    fontWeight: '900',
+  },
+  beltCheckText: {
+    color: colors.primary,
+    fontSize: 11,
+    fontWeight: '900',
+  },
+  previousDojoBox: {
+    backgroundColor: colors.bgDark,
+    borderWidth: 1,
+    borderColor: colors.borderLight,
+    padding: 12,
+    marginTop: 6,
+    gap: 6,
+  },
+  previousDojoTitle: {
+    color: colors.accent,
+    fontSize: 10,
+    fontWeight: '900',
+    letterSpacing: 0.5,
+  },
+  previousDojoDesc: {
+    color: colors.textMuted,
+    fontSize: 11,
+  },
   submitBtn: {
     backgroundColor: colors.primary,
-    borderRadius: radii.md,
     paddingVertical: 16,
+    paddingHorizontal: 24,
     alignItems: 'center',
     margin: 20,
+    borderRadius: 0,
   },
   submitBtnText: {
     color: '#FFFFFF',
+    fontSize: 12,
     fontWeight: '900',
-    fontSize: 13,
-    letterSpacing: 0.8,
+    letterSpacing: 1,
   },
   successContainer: {
     flex: 1,
@@ -711,115 +1049,127 @@ const styles = StyleSheet.create({
   },
   successCard: {
     backgroundColor: colors.bgCard,
+    borderWidth: 1,
+    borderColor: colors.primary,
+    borderRadius: 0,
+    maxWidth: 620,
+    width: '100%',
+    overflow: 'hidden',
+  },
+  successRibbon: {
+    backgroundColor: colors.primary,
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    alignItems: 'center',
+  },
+  successRibbonText: {
+    color: '#FFFFFF',
+    fontSize: 10,
+    fontWeight: '900',
+    letterSpacing: 1.2,
+  },
+  successBody: {
+    padding: 24,
+    alignItems: 'center',
+    gap: 16,
+  },
+  successIconBox: {
+    width: 60,
+    height: 60,
+    borderRadius: 0,
+    backgroundColor: 'rgba(16, 185, 129, 0.15)',
     borderWidth: 2,
     borderColor: colors.success,
-    borderRadius: radii.xl,
-    padding: 32,
-    maxWidth: 520,
-    width: '100%',
     alignItems: 'center',
-    gap: 14,
+    justifyContent: 'center',
   },
   successIcon: {
-    fontSize: 48,
+    fontSize: 28,
+    color: colors.success,
+    fontWeight: '900',
   },
   successTitle: {
-    color: colors.textPrimary,
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: '900',
+    color: colors.textPrimary,
     textAlign: 'center',
     letterSpacing: 0.5,
   },
   successDesc: {
-    color: colors.textMuted,
-    fontSize: 13,
+    color: colors.textSecondary,
+    fontSize: 12,
     lineHeight: 18,
     textAlign: 'center',
   },
-  backBtn: {
-    backgroundColor: colors.primary,
-    paddingVertical: 12,
-    paddingHorizontal: 20,
-    borderRadius: radii.md,
-    marginTop: 6,
-  },
-  backBtnText: {
-    color: '#FFFFFF',
-    fontWeight: '900',
-    fontSize: 12,
-    letterSpacing: 0.5,
-  },
-  beltSelectorBox: {
-    marginTop: 14,
-    paddingTop: 14,
-    borderTopWidth: 1,
-    borderTopColor: colors.borderSubtle,
-    gap: 10,
-  },
-  beltSelectorHint: {
-    color: colors.textDim,
-    fontSize: 11,
-    lineHeight: 16,
-  },
-  beltsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-  },
-  beltOptionCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    paddingVertical: 7,
-    paddingHorizontal: 10,
+  summaryBox: {
     backgroundColor: colors.bgInput,
     borderWidth: 1,
-    borderColor: colors.borderSubtle,
-    borderRadius: radii.sm,
-    width: '31%',
-    minWidth: 150,
+    borderColor: colors.borderLight,
+    padding: 16,
+    width: '100%',
+    gap: 6,
   },
-  beltOptionCardActive: {
-    borderColor: colors.primary,
-    backgroundColor: 'rgba(255, 107, 0, 0.12)',
+  summaryTitle: {
+    color: colors.accent,
+    fontSize: 10,
+    fontWeight: '900',
+    letterSpacing: 1,
+    marginBottom: 4,
   },
-  beltColorIndicator: {
-    width: 12,
-    height: 12,
+  summaryItem: {
+    color: colors.textMuted,
+    fontSize: 11,
+  },
+  summaryVal: {
+    color: colors.textPrimary,
+    fontWeight: '800',
+  },
+  successActionsCol: {
+    width: '100%',
+    gap: 10,
+    marginTop: 10,
+  },
+  newSubmissionBtn: {
+    backgroundColor: colors.primary,
+    paddingVertical: 14,
+    paddingHorizontal: 20,
+    alignItems: 'center',
     borderRadius: 0,
   },
-  beltOptionName: {
-    color: colors.textSecondary,
+  newSubmissionBtnText: {
+    color: '#FFFFFF',
     fontSize: 11,
-    fontWeight: '700',
-    flex: 1,
-  },
-  beltOptionNameActive: {
-    color: colors.primary,
     fontWeight: '900',
+    letterSpacing: 0.8,
   },
-  beltCheckText: {
-    color: colors.primary,
-    fontWeight: '900',
-    fontSize: 12,
-  },
-  previousDojoBox: {
-    backgroundColor: colors.bgInput,
-    padding: 12,
-    borderRadius: radii.md,
+  backToLoginBtn: {
+    backgroundColor: colors.bgDark,
     borderWidth: 1,
-    borderColor: colors.primary,
-    gap: 6,
-    marginTop: 8,
+    borderColor: colors.borderLight,
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    alignItems: 'center',
+    borderRadius: 0,
   },
-  previousDojoTitle: {
-    color: colors.primary,
-    fontSize: 11,
-    fontWeight: '900',
+  backToLoginBtnText: {
+    color: colors.textSecondary,
+    fontSize: 10,
+    fontWeight: '800',
+    letterSpacing: 0.5,
   },
-  previousDojoDesc: {
-    color: colors.textDim,
-    fontSize: 11,
-    lineHeight: 16,
+  backToDashboardBtn: {
+    backgroundColor: colors.bgDark,
+    borderWidth: 1,
+    borderColor: colors.borderLight,
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    alignItems: 'center',
+    borderRadius: 0,
+  },
+  backToDashboardBtnText: {
+    color: colors.textSecondary,
+    fontSize: 10,
+    fontWeight: '800',
+    letterSpacing: 0.5,
   },
 });

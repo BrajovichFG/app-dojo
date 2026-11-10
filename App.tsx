@@ -17,10 +17,27 @@ export default function App() {
   const currentUser = useDojoStore((state) => state.currentUser);
   const currentTab = useDojoStore((state) => state.currentTab);
   const initSupabase = useDojoStore((state) => state.initSupabase);
+  const isPublicFormMode = useDojoStore((state) => state.isPublicFormMode);
+  const openPublicForm = useDojoStore((state) => state.openPublicForm);
+  const closePublicForm = useDojoStore((state) => state.closePublicForm);
   const isLoggedIn = Boolean(currentUser);
 
   useEffect(() => {
     initSupabase();
+
+    // Detección automática de URL pública de matrícula (?matricula=1 o #matricula)
+    if (Platform.OS === 'web' && typeof window !== 'undefined') {
+      const search = window.location.search || '';
+      const hash = window.location.hash || '';
+      if (
+        search.includes('matricula') ||
+        search.includes('inscribete') ||
+        hash.includes('matricula') ||
+        window.location.pathname.includes('inscribete')
+      ) {
+        openPublicForm();
+      }
+    }
 
     // Inyectar CSS global anti-desborde para web / navegadores móviles
     if (Platform.OS === 'web' && typeof document !== 'undefined') {
@@ -51,6 +68,15 @@ export default function App() {
   }, []);
 
   if (!isLoggedIn) {
+    if (isPublicFormMode) {
+      return (
+        <SafeAreaView style={styles.safeArea}>
+          <StatusBar style="light" />
+          <RegistroPublicoScreen isPublicView={true} onBackToLogin={closePublicForm} />
+        </SafeAreaView>
+      );
+    }
+
     return (
       <SafeAreaView style={styles.safeArea}>
         <StatusBar style="light" />

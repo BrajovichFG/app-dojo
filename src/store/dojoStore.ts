@@ -22,6 +22,7 @@ import {
   PostulacionExamen,
   ResultadoExamen,
   Seccion,
+  SolicitudMatricula,
   Usuario,
 } from '../types';
 
@@ -112,6 +113,18 @@ interface DojoState {
   updateCandidateResult: (candidateId: string, resultado: ResultadoExamen, observaciones?: string) => void;
   finalizeExam: (examenId: string) => void;
 
+  // Modo Formulario Público de Matrícula (Fuera del Dashboard)
+  isPublicFormMode: boolean;
+  openPublicForm: () => void;
+  closePublicForm: () => void;
+
+  // Solicitudes de Matrícula Online (Pendientes de Aprobación por Sensei / Administrador)
+  solicitudesMatricula: SolicitudMatricula[];
+  addSolicitudMatricula: (solicitud: Omit<SolicitudMatricula, 'id' | 'created_at' | 'estado'>) => string;
+  aprobarSolicitudMatricula: (solicitudId: string, targetAcademiaId?: string) => Promise<string | undefined>;
+  rechazarSolicitudMatricula: (solicitudId: string, motivo?: string) => void;
+  deleteSolicitudMatricula: (solicitudId: string) => void;
+
   // Categorías personalizables
   customCategories: CategoriaKarate[];
   addCustomCategory: (cat: CategoriaKarate) => void;
@@ -154,6 +167,56 @@ const initialPayments: Record<string, Record<number, PaymentRecord>> = {};
 initialStudents.forEach((student) => {
   initialPayments[student.id] = {};
 });
+
+// Solicitudes iniciales de matrícula online pendientes de validación técnica
+const initialSolicitudesMatricula: SolicitudMatricula[] = [
+  {
+    id: 'sol-1',
+    created_at: '2026-11-09T14:30:00Z',
+    nombres: 'Mateo Ignacio',
+    apellidos: 'Silva Contreras',
+    rut: '23.891.452-9',
+    fecha_nacimiento: '2017-06-14',
+    genero: 'M',
+    peso_actual_kg: 28.5,
+    direccion: 'Av. Einstein #450, Rancagua',
+    lugar_estudio_trabajo: 'Colegio Coya',
+    talla_polera: '12',
+    talla_pantalon: 'Talla 1',
+    cinturon_id: 1, // Blanco (10° Kyu - Jukyu)
+    academia_id: ACADEMIAS_DISPONIBLES[0]?.id,
+    nombre_apoderado: 'Carlos Silva Valenzuela',
+    rut_apoderado: '15.678.912-3',
+    telefono_apoderado: '+56 9 7891 2345',
+    email_apoderado: 'carlos.silva@gmail.com',
+    parentesco_apoderado: 'Padre',
+    dia_pago_mensual: 5,
+    estado: 'PENDIENTE',
+  },
+  {
+    id: 'sol-2',
+    created_at: '2026-11-10T11:15:00Z',
+    nombres: 'Sofía Valentina',
+    apellidos: 'Castro Morales',
+    rut: '24.123.456-7',
+    fecha_nacimiento: '2019-09-22',
+    genero: 'F',
+    peso_actual_kg: 22.0,
+    direccion: 'Av. República #820, Rancagua',
+    lugar_estudio_trabajo: 'Jardín Infantil Campanita',
+    talla_polera: '8',
+    talla_pantalon: 'Talla 0',
+    cinturon_id: 2, // Blanco Punta Amarilla (9° Kyu - Kukyu)
+    academia_id: ACADEMIAS_DISPONIBLES[0]?.id,
+    nombre_apoderado: 'Andrea Morales Pino',
+    rut_apoderado: '16.789.012-K',
+    telefono_apoderado: '+56 9 6543 2198',
+    email_apoderado: 'andrea.morales@hotmail.com',
+    parentesco_apoderado: 'Madre',
+    dia_pago_mensual: 5,
+    estado: 'PENDIENTE',
+  },
+];
 
 // Storage adapter para web/localStorage
 const webStorage =
@@ -784,6 +847,133 @@ export const useDojoStore = create<DojoState>()(
           customCategories: state.customCategories.filter((c) => c.id !== id),
         }));
       },
+
+      // Modo Formulario Público de Matrícula (Exclusivo para alumnos/apoderados fuera del Dashboard)
+      isPublicFormMode: false,
+      openPublicForm: () => set({ isPublicFormMode: true }),
+      closePublicForm: () => set({ isPublicFormMode: false }),
+
+      // Solicitudes de Matrícula Online (Pendientes de Aprobación por Sensei / Administrador)
+      solicitudesMatricula: initialSolicitudesMatricula,
+
+      addSolicitudMatricula: (solicitudData) => {
+        const id = `sol-${Date.now()}`;
+        const newSol: SolicitudMatricula = {
+          ...solicitudData,
+          id,
+          created_at: new Date().toISOString(),
+          estado: 'PENDIENTE',
+        };
+        set((state) => ({
+          solicitudesMatricula: [newSol, ...state.solicitudesMatricula],
+        }));
+        return id;
+      },
+
+      aprobarSolicitudMatricula: async (solicitudId, targetAcademiaId) => {
+        const sol = get().solicitudesMatricula.find((s) => s.id === solicitudId);
+        if (!sol) return;
+
+        const effectiveAcademiaId = targetAcademiaId || sol.academia_id || get().currentAcademia?.id || ACADEMIAS_DISPONIBLES[0]?.id;
+
+        // Determinar sección según edad
+        let seccionId = 'sec-4'; // Adultos
+        if (sol.fecha_nacimiento) {
+          const birth = new Date(sol.fecha_nacimiento);
+          if (!isNaN(birth.getTime())) {
+            const age = new Date().getFullYear() - birth.getFullYear();
+            if (age <= 6) seccionId = 'sec-1';
+            else if (age <= 15) seccionId = 'sec-3';
+            else seccionId = 'sec-4';
+          }
+        }
+
+        const newStudentId = `alu-${Date.now()}`;
+        const newStudent: Alumno = {
+          id: newStudentId,
+          academia_id: effectiveAcademiaId,
+          seccion_id: seccionId,
+          cinturon_id: sol.cinturon_id || 1,
+          nombres: sol.nombres,
+          apellidos: sol.apellidos,
+          rut: sol.rut,
+          fecha_nacimiento: sol.fecha_nacimiento,
+          genero: sol.genero || 'M',
+          peso_actual_kg: sol.peso_actual_kg,
+          direccion: sol.direccion,
+          lugar_estudio_trabajo: sol.lugar_estudio_trabajo,
+          talla_polera: sol.talla_polera,
+          talla_pantalon: sol.talla_pantalon || 'M',
+          dia_pago_mensual: sol.dia_pago_mensual || 5,
+          estado: 'ACTIVO',
+          es_competidor: false,
+          fecha_ingreso: new Date().toISOString().split('T')[0],
+          apoderados: sol.nombre_apoderado
+            ? [
+                {
+                  id: `apod-${Date.now()}`,
+                  alumno_id: newStudentId,
+                  nombre_completo: sol.nombre_apoderado,
+                  rut: sol.rut_apoderado || '',
+                  telefono_whatsapp: sol.telefono_apoderado,
+                  email: sol.email_apoderado,
+                  parentesco: (sol.parentesco_apoderado as any) || 'Titular',
+                },
+              ]
+            : undefined,
+        };
+
+        set((state) => ({
+          students: [newStudent, ...state.students],
+          solicitudesMatricula: state.solicitudesMatricula.map((s) =>
+            s.id === solicitudId
+              ? {
+                  ...s,
+                  estado: 'APROBADA' as const,
+                  fecha_revision: new Date().toISOString(),
+                  academia_id: effectiveAcademiaId,
+                }
+              : s
+          ),
+        }));
+
+        // Sincronizar inserción con Supabase
+        try {
+          const realId = await supabaseService.insertAlumno(newStudent);
+          if (realId) {
+            set((state) => ({
+              students: state.students.map((st) =>
+                st.id === newStudent.id ? { ...st, id: realId } : st
+              ),
+            }));
+            return realId;
+          }
+        } catch (e) {
+          console.error('Error insertando alumno aprobado en Supabase:', e);
+        }
+        return newStudent.id;
+      },
+
+      rechazarSolicitudMatricula: (solicitudId, motivo) => {
+        set((state) => ({
+          solicitudesMatricula: state.solicitudesMatricula.map((s) =>
+            s.id === solicitudId
+              ? {
+                  ...s,
+                  estado: 'RECHAZADA' as const,
+                  fecha_revision: new Date().toISOString(),
+                  notas_revision: motivo,
+                }
+              : s
+          ),
+        }));
+      },
+
+      deleteSolicitudMatricula: (solicitudId) => {
+        set((state) => ({
+          solicitudesMatricula: state.solicitudesMatricula.filter((s) => s.id !== solicitudId),
+        }));
+      },
     }),
     {
       name: 'dojo_shito_ryu_storage_v5',
@@ -791,9 +981,7 @@ export const useDojoStore = create<DojoState>()(
       migrate: (persistedState: any) => {
         if (persistedState) {
           persistedState.users = USUARIOS_DISPONIBLES;
-          if (!persistedState.currentUser || persistedState.currentUser.id !== 'usr-1') {
-            persistedState.currentUser = USUARIOS_DISPONIBLES[0];
-          }
+          persistedState.academias = ACADEMIAS_DISPONIBLES;
         }
         return persistedState;
       },

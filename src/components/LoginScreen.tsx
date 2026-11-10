@@ -45,11 +45,10 @@ export const LoginScreen: React.FC = () => {
     loginAsUser(adminUser ? adminUser.id : 'usr-1', targetAcadId);
   };
 
+  const openPublicForm = useDojoStore((state) => state.openPublicForm);
+
   const handleOpenPublicForm = () => {
-    const adminUser = users.find((u) => u.rol === 'ADMIN_GENERAL') || users[0];
-    const targetAcadId = selectedAcademiaId || academias[0]?.id || '';
-    loginAsUser(adminUser ? adminUser.id : 'usr-1', targetAcadId);
-    setTab('registro_publico');
+    openPublicForm();
   };
 
   return (

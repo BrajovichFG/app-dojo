@@ -9,8 +9,8 @@ import {
   Modal,
 } from 'react-native';
 import { useDojoStore } from '../store/dojoStore';
-import { Academia, Usuario, CategoriaKarate } from '../types';
-import { isCentralAcademia, matchAcademia } from '../data/constants';
+import { Academia, Usuario, CategoriaKarate, SolicitudMatricula } from '../types';
+import { isCentralAcademia, matchAcademia, GRADOS_CINTURON, CENTRAL_ACADEMIA_ID } from '../data/constants';
 import {
   CATEGORIAS_KUMITE,
   CATEGORIAS_KATA,
@@ -37,7 +37,19 @@ export const ConfiguracionScreen: React.FC = () => {
   const addCustomCategory = useDojoStore((state) => state.addCustomCategory);
   const deleteCustomCategory = useDojoStore((state) => state.deleteCustomCategory);
 
-  const [activeSubTab, setActiveSubTab] = useState<'sedes' | 'profesores' | 'traslados' | 'categorias'>('sedes');
+  // Solicitudes de Matrícula Online
+  const solicitudesMatricula = useDojoStore((state) => state.solicitudesMatricula);
+  const aprobarSolicitudMatricula = useDojoStore((state) => state.aprobarSolicitudMatricula);
+  const rechazarSolicitudMatricula = useDojoStore((state) => state.rechazarSolicitudMatricula);
+  const deleteSolicitudMatricula = useDojoStore((state) => state.deleteSolicitudMatricula);
+
+  const [activeSubTab, setActiveSubTab] = useState<'sedes' | 'profesores' | 'solicitudes' | 'traslados' | 'categorias'>('solicitudes');
+
+  // Estados sección Solicitud de Alumnos
+  const [filtroEstadoSol, setFiltroEstadoSol] = useState<'PENDIENTE' | 'APROBADA' | 'TODAS'>('PENDIENTE');
+  const [busquedaSol, setBusquedaSol] = useState('');
+  const [selectedSedeForSol, setSelectedSedeForSol] = useState<Record<string, string>>({});
+  const [toastMsg, setToastMsg] = useState('');
 
   // Modal Nueva Sede
   const [showAddSedeModal, setShowAddSedeModal] = useState(false);
@@ -138,6 +150,36 @@ export const ConfiguracionScreen: React.FC = () => {
     setShowAddCatModal(false);
   };
 
+  const solicitudesPendientes = solicitudesMatricula.filter((s) => s.estado === 'PENDIENTE');
+  const solicitudesAprobadas = solicitudesMatricula.filter((s) => s.estado === 'APROBADA');
+
+  const handleAprobarSolicitud = async (solId: string) => {
+    const sol = solicitudesMatricula.find((s) => s.id === solId);
+    if (!sol) return;
+    const targetSede = selectedSedeForSol[solId] || sol.academia_id || academias[0]?.id;
+    await aprobarSolicitudMatricula(solId, targetSede);
+    setToastMsg(`✓ Matrícula de ${sol.nombres} ${sol.apellidos} aprobada e incorporada a ALUMNOS/ASIGNACION.`);
+    setTimeout(() => setToastMsg(''), 5000);
+  };
+
+  const handleRechazarSolicitud = (solId: string) => {
+    const sol = solicitudesMatricula.find((s) => s.id === solId);
+    if (!sol) return;
+    rechazarSolicitudMatricula(solId);
+    setToastMsg(`Solicitud de ${sol.nombres} ${sol.apellidos} rechazada.`);
+    setTimeout(() => setToastMsg(''), 4000);
+  };
+
+  const handleOpenWhatsAppSolicitud = (phone: string, studentName: string, guardianName: string) => {
+    const cleanPhone = phone.replace(/[^0-9]/g, '');
+    const msg = encodeURIComponent(
+      `Hola ${guardianName}, le informamos desde Dojo Shito Ryu Kyokan Genbukai Rancagua que la postulación de matrícula de ${studentName} ha sido APROBADA con éxito. ¡Bienvenido/a al dojo! Por favor infórmenos si tiene alguna consulta respecto a su primera clase.`
+    );
+    if (typeof window !== 'undefined') {
+      window.open(`https://wa.me/${cleanPhone}?text=${msg}`, '_blank');
+    }
+  };
+
   const allCategories: CategoriaKarate[] = [
     ...CATEGORIAS_KUMITE,
     ...CATEGORIAS_KATA,
@@ -199,11 +241,27 @@ export const ConfiguracionScreen: React.FC = () => {
           </TouchableOpacity>
 
           <TouchableOpacity
+            style={[styles.subTab, activeSubTab === 'solicitudes' && styles.subTabActive]}
+            onPress={() => setActiveSubTab('solicitudes')}
+          >
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+              <Text style={[styles.subTabText, activeSubTab === 'solicitudes' && styles.subTabTextActive]}>
+                SOLICITUD DE ALUMNOS ({solicitudesPendientes.length})
+              </Text>
+              {solicitudesPendientes.length > 0 && (
+                <View style={styles.tabBadgePulse}>
+                  <Text style={styles.tabBadgePulseText}>{solicitudesPendientes.length}</Text>
+                </View>
+              )}
+            </View>
+          </TouchableOpacity>
+
+          <TouchableOpacity
             style={[styles.subTab, activeSubTab === 'traslados' && styles.subTabActive]}
             onPress={() => setActiveSubTab('traslados')}
           >
             <Text style={[styles.subTabText, activeSubTab === 'traslados' && styles.subTabTextActive]}>
-              ASIGNACIÓN DE ALUMNOS ({students.length})
+              ALUMNOS/ASIGNACION ({students.length})
             </Text>
           </TouchableOpacity>
 
@@ -407,14 +465,363 @@ export const ConfiguracionScreen: React.FC = () => {
         </View>
       )}
 
-      {/* SUB-PESTAÑA 3: TRASLADOS Y ASIGNACIÓN DE ALUMNOS */}
+      {/* SUB-PESTAÑA 3: BANDEJA DE SOLICITUDES DE MATRÍCULA ONLINE */}
+      {activeSubTab === 'solicitudes' && (
+        <View style={styles.tabContent}>
+          {toastMsg ? (
+            <View style={styles.toastBanner}>
+              <Text style={styles.toastBannerText}>{toastMsg}</Text>
+            </View>
+          ) : null}
+
+          <View style={[styles.sectionHeaderBar, isMobile && { flexDirection: 'column', alignItems: 'stretch' }]}>
+            <View>
+              <Text style={styles.sectionTitle}>SOLICITUD DE ALUMNOS (MATRÍCULAS ONLINE RECIBIDAS)</Text>
+              <Text style={styles.sectionDesc}>
+                Fichas completadas por apoderados desde el enlace público web. Requieren aprobación antes de integrarse a la nómina oficial.
+              </Text>
+            </View>
+            <View style={[styles.searchBox, isMobile && { width: '100%' }]}>
+              <TextInput
+                style={styles.searchInput}
+                placeholder="Buscar por deportista, RUT o apoderado..."
+                placeholderTextColor="#64748B"
+                value={busquedaSol}
+                onChangeText={setBusquedaSol}
+              />
+            </View>
+          </View>
+
+          {/* Filtros de Estado */}
+          <View style={{ flexDirection: 'row', gap: 8, marginBottom: 14, flexWrap: 'wrap' }}>
+            <TouchableOpacity
+              style={[
+                styles.schoolPill,
+                filtroEstadoSol === 'PENDIENTE' && styles.schoolPillActive,
+                solicitudesPendientes.length > 0 && { borderColor: colors.primary },
+              ]}
+              onPress={() => setFiltroEstadoSol('PENDIENTE')}
+            >
+              <Text
+                style={[
+                  styles.schoolPillText,
+                  filtroEstadoSol === 'PENDIENTE' && styles.schoolPillTextActive,
+                  solicitudesPendientes.length > 0 && { color: colors.primary, fontWeight: '900' },
+                ]}
+              >
+                ⏳ PENDIENTES ({solicitudesPendientes.length})
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[
+                styles.schoolPill,
+                filtroEstadoSol === 'APROBADA' && styles.schoolPillActive,
+              ]}
+              onPress={() => setFiltroEstadoSol('APROBADA')}
+            >
+              <Text
+                style={[
+                  styles.schoolPillText,
+                  filtroEstadoSol === 'APROBADA' && styles.schoolPillTextActive,
+                ]}
+              >
+                ✓ APROBADAS ({solicitudesAprobadas.length})
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[
+                styles.schoolPill,
+                filtroEstadoSol === 'TODAS' && styles.schoolPillActive,
+              ]}
+              onPress={() => setFiltroEstadoSol('TODAS')}
+            >
+              <Text
+                style={[
+                  styles.schoolPillText,
+                  filtroEstadoSol === 'TODAS' && styles.schoolPillTextActive,
+                ]}
+              >
+                TODAS LAS SOLICITUDES ({solicitudesMatricula.length})
+              </Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* Listado de Tarjetas de Solicitudes */}
+          <View style={{ gap: 14 }}>
+            {solicitudesMatricula
+              .filter((sol) => {
+                if (filtroEstadoSol === 'PENDIENTE' && sol.estado !== 'PENDIENTE') return false;
+                if (filtroEstadoSol === 'APROBADA' && sol.estado !== 'APROBADA') return false;
+                if (busquedaSol.trim()) {
+                  const q = busquedaSol.toLowerCase();
+                  const matchName = `${sol.nombres} ${sol.apellidos}`.toLowerCase().includes(q);
+                  const matchRut = sol.rut && sol.rut.toLowerCase().includes(q);
+                  const matchApod = sol.nombre_apoderado && sol.nombre_apoderado.toLowerCase().includes(q);
+                  return matchName || matchRut || matchApod;
+                }
+                return true;
+              })
+              .map((sol) => {
+                const belt = GRADOS_CINTURON.find((g) => g.id === sol.cinturon_id) || GRADOS_CINTURON[0];
+                const solAcademia = academias.find((a) => a.id === sol.academia_id);
+                const chosenSedeId = selectedSedeForSol[sol.id] || sol.academia_id || academias[0]?.id;
+                const chosenAcademia = academias.find((a) => a.id === chosenSedeId);
+
+                // Cálculo de edad
+                let edadCalc = '';
+                if (sol.fecha_nacimiento) {
+                  const b = new Date(sol.fecha_nacimiento);
+                  if (!isNaN(b.getTime())) {
+                    const diff = new Date().getFullYear() - b.getFullYear();
+                    edadCalc = `${diff} años`;
+                  }
+                }
+
+                return (
+                  <View key={sol.id} style={styles.solicitudCard}>
+                    {/* Cinta de Cabecera */}
+                    <View style={styles.solicitudCardHeader}>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                        <Text style={styles.solicitudIdText}>
+                          SOLICITUD #{sol.id.replace('sol-', '')}
+                        </Text>
+                        <Text style={styles.solicitudDateText}>
+                          • Recibida: {new Date(sol.created_at).toLocaleDateString('es-CL')} a las {new Date(sol.created_at).toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' })}
+                        </Text>
+                      </View>
+
+                      <View
+                        style={[
+                          styles.solicitudStatusPill,
+                          sol.estado === 'PENDIENTE' && styles.statusPillPending,
+                          sol.estado === 'APROBADA' && styles.statusPillApproved,
+                          sol.estado === 'RECHAZADA' && styles.statusPillRejected,
+                        ]}
+                      >
+                        <Text
+                          style={[
+                            styles.solicitudStatusPillText,
+                            sol.estado === 'PENDIENTE' && { color: colors.primary },
+                            sol.estado === 'APROBADA' && { color: colors.success },
+                            sol.estado === 'RECHAZADA' && { color: colors.danger },
+                          ]}
+                        >
+                          {sol.estado === 'PENDIENTE' && '⏳ PENDIENTE DE APROBACIÓN'}
+                          {sol.estado === 'APROBADA' && '✓ MATRÍCULA APROBADA'}
+                          {sol.estado === 'RECHAZADA' && '✕ RECHAZADA'}
+                        </Text>
+                      </View>
+                    </View>
+
+                    {/* Cuerpo de la Solicitud */}
+                    <View style={styles.solicitudCardBody}>
+                      {/* Fila Principal: Datos Alumno y Apoderado */}
+                      <View style={[styles.solicitudTwoCols, isMobile && { flexDirection: 'column' }]}>
+                        {/* Columna Izquierda: Datos del Deportista */}
+                        <View style={styles.solicitudCol}>
+                          <Text style={styles.solicitudSectionLabel}>🥋 DATOS DEL DEPORTISTA</Text>
+                          <Text style={styles.solicitudStudentName}>
+                            {sol.nombres} {sol.apellidos}
+                          </Text>
+
+                          <View style={styles.solicitudDataGrid}>
+                            <Text style={styles.solicitudDataRow}>
+                              • RUT: <Text style={styles.solicitudDataVal}>{sol.rut || 'No informado'}</Text>
+                            </Text>
+                            <Text style={styles.solicitudDataRow}>
+                              • Fecha Nacimiento: <Text style={styles.solicitudDataVal}>{sol.fecha_nacimiento || 'No informada'} {edadCalc ? `(${edadCalc})` : ''}</Text>
+                            </Text>
+                            <Text style={styles.solicitudDataRow}>
+                              • Género: <Text style={styles.solicitudDataVal}>{sol.genero === 'F' ? 'Femenino (Damas)' : 'Masculino (Varones)'}</Text>
+                            </Text>
+                            <Text style={styles.solicitudDataRow}>
+                              • Peso Actual: <Text style={styles.solicitudDataVal}>{sol.peso_actual_kg ? `${sol.peso_actual_kg} kg` : 'Sin pesaje'}</Text>
+                            </Text>
+                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginVertical: 2 }}>
+                              <Text style={styles.solicitudDataRow}>• Grado / Kyu:</Text>
+                              <View style={[styles.beltColorSquare, { backgroundColor: belt.color_hex }]} />
+                              <Text style={[styles.solicitudDataVal, { color: colors.primary }]}>{belt.nombre}</Text>
+                            </View>
+                            <Text style={styles.solicitudDataRow}>
+                              • Talla Karategui: <Text style={styles.solicitudDataVal}>Polera {sol.talla_polera || 'M'} • Pantalón {sol.talla_pantalon || 'Talla 3'}</Text>
+                            </Text>
+                            <Text style={styles.solicitudDataRow}>
+                              • Colegio / Trabajo: <Text style={styles.solicitudDataVal}>{sol.lugar_estudio_trabajo || 'No indicado'}</Text>
+                            </Text>
+                            <Text style={styles.solicitudDataRow}>
+                              • Dirección: <Text style={styles.solicitudDataVal}>{sol.direccion || 'No indicada'}</Text>
+                            </Text>
+                            {sol.escuela_origen ? (
+                              <Text style={[styles.solicitudDataRow, { color: colors.accent }]}>
+                                • Dojo / Sensei Previo: <Text style={styles.solicitudDataVal}>{sol.escuela_origen}</Text>
+                              </Text>
+                            ) : null}
+                          </View>
+                        </View>
+
+                        {/* Columna Derecha: Antecedentes del Apoderado */}
+                        <View style={styles.solicitudCol}>
+                          <Text style={styles.solicitudSectionLabel}>👨‍👩‍👧 ANTECEDENTES DEL APODERADO / TUTOR</Text>
+                          <Text style={styles.solicitudGuardianName}>
+                            {sol.nombre_apoderado} ({sol.parentesco_apoderado || 'Titular'})
+                          </Text>
+
+                          <View style={styles.solicitudDataGrid}>
+                            <Text style={styles.solicitudDataRow}>
+                              • RUT Apoderado: <Text style={styles.solicitudDataVal}>{sol.rut_apoderado || 'No informado'}</Text>
+                            </Text>
+                            <Text style={styles.solicitudDataRow}>
+                              • Teléfono WhatsApp: <Text style={[styles.solicitudDataVal, { color: colors.primary }]}>{sol.telefono_apoderado}</Text>
+                            </Text>
+                            <Text style={styles.solicitudDataRow}>
+                              • Correo: <Text style={styles.solicitudDataVal}>{sol.email_apoderado || 'No informado'}</Text>
+                            </Text>
+                            <Text style={styles.solicitudDataRow}>
+                              • Día de Pago Comprometido: <Text style={styles.solicitudDataVal}>Día {sol.dia_pago_mensual || 5} de cada mes</Text>
+                            </Text>
+                          </View>
+
+                          {/* Sede solicitada por el usuario */}
+                          <View style={styles.sedeSolicitadaBox}>
+                            <Text style={styles.sedeSolicitadaLabel}>SEDE SOLICITADA EN EL FORMULARIO:</Text>
+                            <Text style={styles.sedeSolicitadaVal}>
+                              📍 {solAcademia ? solAcademia.nombre : '⚠️ Sin sede seleccionada (Asignar abajo)'}
+                            </Text>
+                          </View>
+                        </View>
+                      </View>
+
+                      {/* Asignación de Escuela y Acciones de Aprobación */}
+                      <View style={styles.solicitudActionsBar}>
+                        {sol.estado === 'PENDIENTE' && (
+                          <View style={[styles.assignSchoolRow, isMobile && { flexDirection: 'column', alignItems: 'stretch' }]}>
+                            <View style={{ flex: 1 }}>
+                              <Text style={styles.assignSchoolLabel}>CONFIRMAR SEDE / ESCUELA A ASIGNAR:</Text>
+                              <View style={styles.assignPillsWrap}>
+                                {academias.map((ac) => {
+                                  const isTarget = chosenSedeId === ac.id;
+                                  return (
+                                    <TouchableOpacity
+                                      key={ac.id}
+                                      style={[styles.assignPillBtn, isTarget && styles.assignPillBtnActive]}
+                                      onPress={() => setSelectedSedeForSol({ ...selectedSedeForSol, [sol.id]: ac.id })}
+                                      activeOpacity={0.8}
+                                    >
+                                      <Text style={[styles.assignPillText, isTarget && styles.assignPillTextActive]}>
+                                        {isTarget ? '● ' : ''}{ac.nombre}
+                                      </Text>
+                                    </TouchableOpacity>
+                                  );
+                                })}
+                              </View>
+                            </View>
+
+                            <View style={[styles.solicitudBtnGroup, isMobile && { flexDirection: 'column', width: '100%' }]}>
+                              <TouchableOpacity
+                                style={styles.btnApproveSolicitud}
+                                onPress={() => handleAprobarSolicitud(sol.id)}
+                                activeOpacity={0.85}
+                              >
+                                <Text style={styles.btnApproveSolicitudText}>
+                                  ✓ APROBAR Y PASAR A ALUMNOS/ASIGNACION ➔
+                                </Text>
+                              </TouchableOpacity>
+
+                              <TouchableOpacity
+                                style={styles.btnWhatsAppSolicitud}
+                                onPress={() => handleOpenWhatsAppSolicitud(sol.telefono_apoderado, `${sol.nombres} ${sol.apellidos}`, sol.nombre_apoderado)}
+                                activeOpacity={0.85}
+                              >
+                                <Text style={styles.btnWhatsAppSolicitudText}>
+                                  📲 ENVIAR WHATSAPP
+                                </Text>
+                              </TouchableOpacity>
+
+                              <TouchableOpacity
+                                style={styles.btnRejectSolicitud}
+                                onPress={() => handleRechazarSolicitud(sol.id)}
+                                activeOpacity={0.85}
+                              >
+                                <Text style={styles.btnRejectSolicitudText}>RECHAZAR</Text>
+                              </TouchableOpacity>
+                            </View>
+                          </View>
+                        )}
+
+                        {sol.estado === 'APROBADA' && (
+                          <View style={[styles.approvedNoticeRow, isMobile && { flexDirection: 'column', alignItems: 'stretch', gap: 10 }]}>
+                            <View style={{ flex: 1 }}>
+                              <Text style={styles.approvedNoticeTitle}>
+                                ✓ ESTE ALUMNO FUE APROBADO Y AGREGADO A LA ESCUELA:
+                              </Text>
+                              <Text style={styles.approvedNoticeSchool}>
+                                📍 {chosenAcademia?.nombre || 'Dojo Central Rancagua'} (Visible en ALUMNOS/ASIGNACION y módulo Alumnos)
+                              </Text>
+                            </View>
+
+                            <View style={{ flexDirection: 'row', gap: 8 }}>
+                              <TouchableOpacity
+                                style={styles.btnWhatsAppSolicitud}
+                                onPress={() => handleOpenWhatsAppSolicitud(sol.telefono_apoderado, `${sol.nombres} ${sol.apellidos}`, sol.nombre_apoderado)}
+                                activeOpacity={0.85}
+                              >
+                                <Text style={styles.btnWhatsAppSolicitudText}>
+                                  📲 CONTACTAR POR WHATSAPP
+                                </Text>
+                              </TouchableOpacity>
+
+                              <TouchableOpacity
+                                style={styles.btnDeleteSolicitud}
+                                onPress={() => deleteSolicitudMatricula(sol.id)}
+                                activeOpacity={0.85}
+                              >
+                                <Text style={styles.btnDeleteSolicitudText}>ELIMINAR REGISTRO</Text>
+                              </TouchableOpacity>
+                            </View>
+                          </View>
+                        )}
+                      </View>
+                    </View>
+                  </View>
+                );
+              })}
+
+            {solicitudesMatricula.filter((sol) => {
+              if (filtroEstadoSol === 'PENDIENTE' && sol.estado !== 'PENDIENTE') return false;
+              if (filtroEstadoSol === 'APROBADA' && sol.estado !== 'APROBADA') return false;
+              if (busquedaSol.trim()) {
+                const q = busquedaSol.toLowerCase();
+                return `${sol.nombres} ${sol.apellidos}`.toLowerCase().includes(q) ||
+                  (sol.rut && sol.rut.toLowerCase().includes(q)) ||
+                  (sol.nombre_apoderado && sol.nombre_apoderado.toLowerCase().includes(q));
+              }
+              return true;
+            }).length === 0 && (
+              <View style={styles.emptySolicitudesCard}>
+                <Text style={styles.emptySolicitudesTitle}>
+                  ✓ NO HAY SOLICITUDES EN ESTA SECCIÓN
+                </Text>
+                <Text style={styles.emptySolicitudesDesc}>
+                  {filtroEstadoSol === 'PENDIENTE'
+                    ? 'No hay postulaciones de matrícula en espera de confirmación. Todas las fichas han sido procesadas.'
+                    : 'No se encontraron solicitudes con el filtro seleccionado.'}
+                </Text>
+              </View>
+            )}
+          </View>
+        </View>
+      )}
+
+      {/* SUB-PESTAÑA 4: ALUMNOS/ASIGNACION (TODOS LOS ALUMNOS DEL SISTEMA) */}
       {activeSubTab === 'traslados' && (
         <View style={styles.tabContent}>
           <View style={[styles.sectionHeaderBar, isMobile && { flexDirection: 'column', alignItems: 'stretch' }]}>
             <View>
-              <Text style={styles.sectionTitle}>ASIGNACIÓN DE ALUMNOS A ESCUELAS</Text>
+              <Text style={styles.sectionTitle}>ALUMNOS / ASIGNACIÓN A ESCUELAS (TODOS LOS ALUMNOS)</Text>
               <Text style={styles.sectionDesc}>
-                Cambia de sede a un deportista si entrena en otra filial o se traslada de ciudad.
+                Listado centralizado de todos los alumnos registrados para asignar o trasladar de escuela/sede.
               </Text>
             </View>
             <View style={[styles.searchBox, isMobile && { width: '100%' }]}>
@@ -2114,7 +2521,296 @@ const styles = StyleSheet.create({
     backgroundColor: colors.bgCard,
     borderWidth: 1,
     borderColor: colors.border,
-    borderRadius: radii.lg,
+    borderRadius: 0,
     padding: 14,
+  },
+  toastBanner: {
+    backgroundColor: 'rgba(16, 185, 129, 0.15)',
+    borderLeftWidth: 4,
+    borderLeftColor: colors.success,
+    padding: 12,
+    marginBottom: 14,
+  },
+  toastBannerText: {
+    color: colors.success,
+    fontSize: 12,
+    fontWeight: '800',
+  },
+  tabBadgePulse: {
+    backgroundColor: colors.primary,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 0,
+  },
+  tabBadgePulseText: {
+    color: '#FFFFFF',
+    fontSize: 9,
+    fontWeight: '900',
+  },
+  solicitudCard: {
+    backgroundColor: colors.bgCard,
+    borderWidth: 1,
+    borderColor: colors.borderLight,
+    borderRadius: 0,
+    overflow: 'hidden',
+    width: '100%',
+  },
+  solicitudCardHeader: {
+    backgroundColor: colors.bgSurface,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    borderBottomWidth: 1,
+    borderBottomColor: colors.borderSubtle,
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  solicitudIdText: {
+    color: colors.primary,
+    fontSize: 11,
+    fontWeight: '900',
+    letterSpacing: 0.5,
+  },
+  solicitudDateText: {
+    color: colors.textDim,
+    fontSize: 11,
+  },
+  solicitudStatusPill: {
+    paddingVertical: 3,
+    paddingHorizontal: 8,
+    borderWidth: 1,
+    borderRadius: 0,
+  },
+  statusPillPending: {
+    backgroundColor: 'rgba(255, 107, 0, 0.12)',
+    borderColor: colors.primary,
+  },
+  statusPillApproved: {
+    backgroundColor: 'rgba(16, 185, 129, 0.12)',
+    borderColor: colors.success,
+  },
+  statusPillRejected: {
+    backgroundColor: 'rgba(239, 68, 68, 0.12)',
+    borderColor: colors.danger,
+  },
+  solicitudStatusPillText: {
+    fontSize: 10,
+    fontWeight: '900',
+    letterSpacing: 0.5,
+  },
+  solicitudCardBody: {
+    padding: 16,
+    gap: 16,
+  },
+  solicitudTwoCols: {
+    flexDirection: 'row',
+    gap: 16,
+  },
+  solicitudCol: {
+    flex: 1,
+    gap: 8,
+  },
+  solicitudSectionLabel: {
+    color: colors.accent,
+    fontSize: 10,
+    fontWeight: '900',
+    letterSpacing: 0.8,
+  },
+  solicitudStudentName: {
+    color: colors.textPrimary,
+    fontSize: 16,
+    fontWeight: '900',
+  },
+  solicitudGuardianName: {
+    color: colors.textPrimary,
+    fontSize: 14,
+    fontWeight: '800',
+  },
+  solicitudDataGrid: {
+    gap: 4,
+    marginTop: 2,
+  },
+  solicitudDataRow: {
+    color: colors.textDim,
+    fontSize: 11,
+  },
+  solicitudDataVal: {
+    color: colors.textSecondary,
+    fontWeight: '700',
+  },
+  beltColorSquare: {
+    width: 12,
+    height: 12,
+    borderRadius: 0,
+    borderWidth: 1,
+    borderColor: colors.borderLight,
+  },
+  sedeSolicitadaBox: {
+    backgroundColor: colors.bgInput,
+    borderWidth: 1,
+    borderColor: colors.borderSubtle,
+    padding: 10,
+    marginTop: 8,
+    gap: 4,
+  },
+  sedeSolicitadaLabel: {
+    color: colors.textDim,
+    fontSize: 9,
+    fontWeight: '800',
+    letterSpacing: 0.5,
+  },
+  sedeSolicitadaVal: {
+    color: colors.textPrimary,
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  solicitudActionsBar: {
+    borderTopWidth: 1,
+    borderTopColor: colors.borderSubtle,
+    paddingTop: 14,
+  },
+  assignSchoolRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+    justifyContent: 'space-between',
+  },
+  assignSchoolLabel: {
+    color: colors.textDim,
+    fontSize: 9,
+    fontWeight: '800',
+    letterSpacing: 0.5,
+    marginBottom: 6,
+  },
+  assignPillsWrap: {
+    flexDirection: 'row',
+    gap: 6,
+    flexWrap: 'wrap',
+  },
+  assignPillBtn: {
+    backgroundColor: colors.bgInput,
+    borderWidth: 1,
+    borderColor: colors.borderSubtle,
+    paddingHorizontal: 8,
+    paddingVertical: 5,
+    borderRadius: 0,
+  },
+  assignPillBtnActive: {
+    borderColor: colors.primary,
+    backgroundColor: 'rgba(255, 107, 0, 0.15)',
+  },
+  assignPillText: {
+    color: colors.textMuted,
+    fontSize: 10,
+    fontWeight: '700',
+  },
+  assignPillTextActive: {
+    color: colors.primary,
+    fontWeight: '900',
+  },
+  solicitudBtnGroup: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    flexWrap: 'wrap',
+  },
+  btnApproveSolicitud: {
+    backgroundColor: colors.success,
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    borderRadius: 0,
+    alignItems: 'center',
+  },
+  btnApproveSolicitudText: {
+    color: '#FFFFFF',
+    fontSize: 11,
+    fontWeight: '900',
+    letterSpacing: 0.5,
+  },
+  btnWhatsAppSolicitud: {
+    backgroundColor: 'rgba(37, 211, 102, 0.15)',
+    borderWidth: 1,
+    borderColor: '#25D366',
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderRadius: 0,
+    alignItems: 'center',
+  },
+  btnWhatsAppSolicitudText: {
+    color: '#25D366',
+    fontSize: 10,
+    fontWeight: '900',
+  },
+  btnRejectSolicitud: {
+    backgroundColor: 'rgba(239, 68, 68, 0.15)',
+    borderWidth: 1,
+    borderColor: colors.danger,
+    paddingVertical: 10,
+    paddingHorizontal: 10,
+    borderRadius: 0,
+    alignItems: 'center',
+  },
+  btnRejectSolicitudText: {
+    color: colors.danger,
+    fontSize: 10,
+    fontWeight: '800',
+  },
+  approvedNoticeRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    backgroundColor: 'rgba(16, 185, 129, 0.08)',
+    borderWidth: 1,
+    borderColor: colors.successBorder,
+    padding: 12,
+  },
+  approvedNoticeTitle: {
+    color: colors.success,
+    fontSize: 10,
+    fontWeight: '900',
+    letterSpacing: 0.5,
+  },
+  approvedNoticeSchool: {
+    color: colors.textPrimary,
+    fontSize: 12,
+    fontWeight: '800',
+    marginTop: 2,
+  },
+  btnDeleteSolicitud: {
+    backgroundColor: colors.bgDark,
+    borderWidth: 1,
+    borderColor: colors.borderLight,
+    paddingVertical: 8,
+    paddingHorizontal: 10,
+    borderRadius: 0,
+    alignItems: 'center',
+  },
+  btnDeleteSolicitudText: {
+    color: colors.textDim,
+    fontSize: 9,
+    fontWeight: '800',
+  },
+  emptySolicitudesCard: {
+    backgroundColor: colors.bgCard,
+    borderWidth: 1,
+    borderColor: colors.borderLight,
+    borderRadius: 0,
+    padding: 30,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+  },
+  emptySolicitudesTitle: {
+    color: colors.success,
+    fontSize: 13,
+    fontWeight: '900',
+  },
+  emptySolicitudesDesc: {
+    color: colors.textDim,
+    fontSize: 11,
+    textAlign: 'center',
+    maxWidth: 480,
   },
 });
