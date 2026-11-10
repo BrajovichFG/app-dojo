@@ -1,105 +1,166 @@
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, ScrollView } from 'react-native';
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  StyleSheet,
+  ScrollView,
+  TextInput,
+} from 'react-native';
 import { useDojoStore } from '../store/dojoStore';
-import { Usuario } from '../types';
-import { colors, radii, useResponsive } from '../theme/theme';
+import { colors, useResponsive } from '../theme/theme';
 
 export const LoginScreen: React.FC = () => {
   const users = useDojoStore((state) => state.users);
+  const academias = useDojoStore((state) => state.academias);
   const loginAsUser = useDojoStore((state) => state.loginAsUser);
   const setTab = useDojoStore((state) => state.setTab);
   const { isMobile } = useResponsive();
 
-  const [selectedUser, setSelectedUser] = useState<Usuario>(users[0]);
-  const [selectedAcademiaId, setSelectedAcademiaId] = useState<string>(users[0].academias[0].id);
-
-  const handleSelectUser = (u: Usuario) => {
-    setSelectedUser(u);
-    if (u.academias.length > 0) {
-      setSelectedAcademiaId(u.academias[0].id);
-    }
-  };
+  // Campos de fachada para autenticación
+  const [identificador, setIdentificador] = useState('admin@dojoshitoryu.cl');
+  const [password, setPassword] = useState('••••••••••••');
+  const [selectedAcademiaId, setSelectedAcademiaId] = useState<string>(
+    academias[0]?.id || ''
+  );
+  const [errorMsg, setErrorMsg] = useState('');
 
   const handleLogin = () => {
-    loginAsUser(selectedUser.id, selectedAcademiaId);
+    if (!identificador.trim()) {
+      setErrorMsg('Por favor ingresa tu RUT o correo autorizado.');
+      return;
+    }
+    setErrorMsg('');
+
+    // Usuario administrador por defecto para la fachada
+    const adminUser = users.find((u) => u.rol === 'ADMIN_GENERAL') || users[0];
+    const targetAcadId = selectedAcademiaId || academias[0]?.id || '';
+
+    loginAsUser(adminUser ? adminUser.id : 'usr-1', targetAcadId);
   };
 
   const handleOpenPublicForm = () => {
-    loginAsUser(users[0].id, users[0].academias[0].id);
+    const adminUser = users.find((u) => u.rol === 'ADMIN_GENERAL') || users[0];
+    const targetAcadId = selectedAcademiaId || academias[0]?.id || '';
+    loginAsUser(adminUser ? adminUser.id : 'usr-1', targetAcadId);
     setTab('registro_publico');
   };
 
   return (
-    <ScrollView contentContainerStyle={[styles.container, isMobile && { padding: 12 }]}>
-      <View style={[styles.card, isMobile && { maxWidth: '100%', borderRadius: radii.lg }]}>
-        {/* Barra superior institucional estilo DojoStrike */}
+    <ScrollView
+      contentContainerStyle={[
+        styles.container,
+        isMobile && { padding: 12 },
+      ]}
+    >
+      <View style={[styles.card, isMobile && { maxWidth: '100%' }]}>
+        {/* Barra superior oficial */}
         <View style={styles.topHeaderRibbon}>
-          <Text style={styles.ribbonText}>🥋 DOJOSTRIKE • SHITO RYU KYOKAN GENBUKAI</Text>
+          <Text style={styles.ribbonText}>
+            DOJOSTRIKE OS • SHITO RYU KYOKAN GENBUKAI
+          </Text>
         </View>
 
-        <View style={[styles.headerBody, isMobile && { padding: 16 }]}>
+        {/* Encabezado y Marca */}
+        <View style={styles.headerBody}>
           <View style={styles.brandRow}>
-            <View style={styles.logoCircle}>
-              <Text style={styles.logoCircleText}>🥋</Text>
+            <View style={styles.logoSquare}>
+              <Text style={styles.logoSquareText}>SR</Text>
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={styles.title}>DOJO SHITO RYU</Text>
+              <Text style={styles.title}>PORTAL DE ACCESO AL DOJO</Text>
               <Text style={styles.subtitle}>
-                Panel Administrativo y Técnico • Selecciona tu perfil
+                Panel Administrativo, Control de Nóminas y Planificación Técnica
               </Text>
             </View>
           </View>
         </View>
 
-        {/* Paso 1: Seleccionar Usuario */}
-        <View style={[styles.sectionBlock, isMobile && { padding: 16 }]}>
-          <Text style={styles.sectionTitle}>1. SELECCIONA EL USUARIO QUE INGRESA:</Text>
-          <View style={styles.userList}>
-            {users.map((u) => {
-              const isSelected = selectedUser.id === u.id;
-              return (
-                <TouchableOpacity
-                  key={u.id}
-                  style={[styles.userOption, isSelected && styles.userOptionSelected]}
-                  onPress={() => handleSelectUser(u)}
-                  activeOpacity={0.8}
-                >
-                  <View style={[styles.userIndicator, isSelected && styles.userIndicatorActive]} />
-                  <View style={{ flex: 1 }}>
-                    <Text style={[styles.userName, isSelected && styles.userNameSelected]}>
-                      {u.nombre_completo}
-                    </Text>
-                    <Text style={styles.userMeta}>
-                      Rol: {u.rol.replace('_', ' ')} • {u.academias.length} {u.academias.length === 1 ? 'Sede asignada' : 'Sedes asignadas'}
-                    </Text>
-                  </View>
-                  {isSelected && <Text style={styles.checkText}>✓ ACTIVO</Text>}
-                </TouchableOpacity>
-              );
-            })}
+        {errorMsg ? (
+          <View style={styles.errorBox}>
+            <Text style={styles.errorText}>{errorMsg}</Text>
+          </View>
+        ) : null}
+
+        {/* Formulario de Fachada de Credenciales */}
+        <View style={styles.sectionBlock}>
+          <Text style={styles.sectionTitle}>1. CREDENCIALES DE ACCESO:</Text>
+
+          <View style={styles.inputGroup}>
+            <Text style={styles.inputLabel}>RUT O CORREO INSTITUCIONAL</Text>
+            <TextInput
+              style={styles.textInput}
+              value={identificador}
+              onChangeText={setIdentificador}
+              placeholder="Ej: 14.285.923-1 o admin@dojoshitoryu.cl"
+              placeholderTextColor={colors.textDim}
+              autoCapitalize="none"
+            />
+          </View>
+
+          <View style={[styles.inputGroup, { marginTop: 12 }]}>
+            <Text style={styles.inputLabel}>CONTRASEÑA DE SEGURIDAD</Text>
+            <TextInput
+              style={styles.textInput}
+              value={password}
+              onChangeText={setPassword}
+              secureTextEntry
+              placeholder="Ingresa tu clave"
+              placeholderTextColor={colors.textDim}
+            />
           </View>
         </View>
 
-        {/* Paso 2: Seleccionar Sede / Academia */}
-        <View style={[styles.sectionBlock, isMobile && { padding: 16 }]}>
-          <Text style={styles.sectionTitle}>2. SELECCIONA LA SEDE / ACADEMIA A GESTIONAR:</Text>
+        {/* Selector de Sede a Administrar */}
+        <View style={styles.sectionBlock}>
+          <Text style={styles.sectionTitle}>2. SELECCIONA LA SEDE O ESCUELA A ADMINISTRAR:</Text>
           <View style={styles.academiaList}>
-            {selectedUser.academias.map((a) => {
+            {academias.map((a, idx) => {
               const isSelected = selectedAcademiaId === a.id;
               return (
                 <TouchableOpacity
                   key={a.id}
-                  style={[styles.academiaOption, isSelected && styles.academiaOptionSelected]}
+                  style={[
+                    styles.academiaOption,
+                    isSelected && styles.academiaOptionSelected,
+                  ]}
                   onPress={() => setSelectedAcademiaId(a.id)}
-                  activeOpacity={0.8}
+                  activeOpacity={0.85}
                 >
+                  <View
+                    style={[
+                      styles.indicatorBar,
+                      isSelected && styles.indicatorBarActive,
+                    ]}
+                  />
                   <View style={{ flex: 1 }}>
-                    <Text style={[styles.academiaName, isSelected && styles.academiaNameSelected]}>
-                      🥋 {a.nombre}
+                    <Text
+                      style={[
+                        styles.academiaName,
+                        isSelected && styles.academiaNameSelected,
+                      ]}
+                    >
+                      {a.nombre}
                     </Text>
-                    <Text style={styles.academiaAddress}>📍 {a.direccion}</Text>
+                    <Text style={styles.academiaAddress}>
+                      {a.direccion || 'Sede oficial'}
+                    </Text>
                   </View>
-                  {isSelected && <View style={styles.sharpDot} />}
+                  <View
+                    style={[
+                      styles.statusPill,
+                      isSelected && styles.statusPillActive,
+                    ]}
+                  >
+                    <Text
+                      style={[
+                        styles.statusPillText,
+                        isSelected && styles.statusPillTextActive,
+                      ]}
+                    >
+                      {isSelected ? '✓ SELECCIONADA' : 'ELEGIR'}
+                    </Text>
+                  </View>
                 </TouchableOpacity>
               );
             })}
@@ -107,22 +168,32 @@ export const LoginScreen: React.FC = () => {
         </View>
 
         {/* Botón Principal de Ingreso */}
-        <TouchableOpacity style={styles.enterButton} onPress={handleLogin} activeOpacity={0.85}>
-          <Text style={styles.enterButtonText}>INGRESAR AL SISTEMA DOJO ➔</Text>
-        </TouchableOpacity>
+        <View style={styles.actionBlock}>
+          <TouchableOpacity
+            style={styles.enterButton}
+            onPress={handleLogin}
+            activeOpacity={0.85}
+          >
+            <Text style={styles.enterButtonText}>
+              INICIAR SESIÓN Y ACCEDER AL SISTEMA ➔
+            </Text>
+          </TouchableOpacity>
 
-        {/* Enlace al Formulario Público de Matrícula */}
-        <TouchableOpacity
-          style={styles.publicLinkButton}
-          onPress={handleOpenPublicForm}
-          activeOpacity={0.85}
-        >
-          <Text style={styles.publicLinkText}>📲 Abrir Formulario Público de Matrícula Online</Text>
-        </TouchableOpacity>
+          {/* Enlace al Formulario Público de Matrícula */}
+          <TouchableOpacity
+            style={styles.publicLinkButton}
+            onPress={handleOpenPublicForm}
+            activeOpacity={0.85}
+          >
+            <Text style={styles.publicLinkText}>
+              IR AL FORMULARIO PÚBLICO DE MATRÍCULA ONLINE
+            </Text>
+          </TouchableOpacity>
+        </View>
 
         <View style={styles.footerNote}>
           <Text style={styles.footerText}>
-            Dojo Shito Ryu Kyokan Genbukai • Rancagua, Chile • v2.6
+            Dojo Shito Ryu Kyokan Genbukai • Rancagua, Chile • v2.6 Fachada Segura
           </Text>
         </View>
       </View>
@@ -140,17 +211,12 @@ const styles = StyleSheet.create({
   },
   card: {
     width: '100%',
-    maxWidth: 580,
+    maxWidth: 620,
     backgroundColor: colors.bgCard,
     borderWidth: 1,
     borderColor: colors.borderLight,
-    borderRadius: radii.xl,
+    borderRadius: 0,
     overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.4,
-    shadowRadius: 16,
-    elevation: 8,
   },
   topHeaderRibbon: {
     backgroundColor: colors.primary,
@@ -175,21 +241,23 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 16,
   },
-  logoCircle: {
+  logoSquare: {
     width: 48,
     height: 48,
-    borderRadius: 24,
+    borderRadius: 0,
     backgroundColor: colors.primaryLight,
     borderWidth: 2,
     borderColor: colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  logoCircleText: {
-    fontSize: 22,
+  logoSquareText: {
+    fontSize: 20,
+    fontWeight: '900',
+    color: colors.primary,
   },
   title: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: '900',
     color: colors.textPrimary,
     letterSpacing: 0.5,
@@ -199,62 +267,49 @@ const styles = StyleSheet.create({
     color: colors.textMuted,
     marginTop: 3,
   },
+  errorBox: {
+    backgroundColor: 'rgba(239, 68, 68, 0.15)',
+    borderLeftWidth: 4,
+    borderLeftColor: colors.danger,
+    padding: 12,
+    marginHorizontal: 20,
+    marginTop: 16,
+  },
+  errorText: {
+    color: colors.danger,
+    fontSize: 12,
+    fontWeight: '700',
+  },
   sectionBlock: {
     padding: 20,
     borderBottomWidth: 1,
     borderBottomColor: colors.borderSubtle,
   },
   sectionTitle: {
-    color: colors.primary,
+    color: colors.accent,
     fontSize: 11,
-    fontWeight: '800',
+    fontWeight: '900',
     letterSpacing: 1,
     marginBottom: 12,
   },
-  userList: {
-    gap: 8,
+  inputGroup: {
+    gap: 6,
   },
-  userOption: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: colors.bgInput,
-    padding: 12,
-    borderWidth: 1,
-    borderColor: colors.borderSubtle,
-    borderRadius: radii.md,
-    gap: 12,
-  },
-  userOptionSelected: {
-    borderColor: colors.primary,
-    backgroundColor: 'rgba(255, 107, 0, 0.08)',
-  },
-  userIndicator: {
-    width: 4,
-    height: 32,
-    backgroundColor: colors.borderLight,
-    borderRadius: 2,
-  },
-  userIndicatorActive: {
-    backgroundColor: colors.primary,
-  },
-  userName: {
+  inputLabel: {
     color: colors.textSecondary,
-    fontSize: 14,
-    fontWeight: '700',
-  },
-  userNameSelected: {
-    color: colors.textPrimary,
-  },
-  userMeta: {
-    color: colors.textDim,
-    fontSize: 11,
-    marginTop: 2,
-  },
-  checkText: {
-    color: colors.primary,
-    fontSize: 11,
-    fontWeight: '900',
+    fontSize: 10,
+    fontWeight: '800',
     letterSpacing: 0.5,
+  },
+  textInput: {
+    backgroundColor: colors.bgDark,
+    borderWidth: 1,
+    borderColor: colors.borderLight,
+    borderRadius: 0,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    color: colors.textPrimary,
+    fontSize: 13,
   },
   academiaList: {
     gap: 8,
@@ -262,70 +317,90 @@ const styles = StyleSheet.create({
   academiaOption: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.bgInput,
+    backgroundColor: colors.bgDark,
     padding: 12,
     borderWidth: 1,
     borderColor: colors.borderSubtle,
-    borderRadius: radii.md,
+    borderRadius: 0,
+    gap: 12,
   },
   academiaOptionSelected: {
     borderColor: colors.primary,
     backgroundColor: 'rgba(255, 107, 0, 0.08)',
   },
+  indicatorBar: {
+    width: 4,
+    height: 36,
+    backgroundColor: colors.borderLight,
+    borderRadius: 0,
+  },
+  indicatorBarActive: {
+    backgroundColor: colors.primary,
+  },
   academiaName: {
     color: colors.textSecondary,
     fontSize: 13,
-    fontWeight: '700',
+    fontWeight: '800',
   },
   academiaNameSelected: {
-    color: colors.primary,
+    color: colors.textPrimary,
   },
   academiaAddress: {
     color: colors.textDim,
     fontSize: 11,
     marginTop: 2,
   },
-  sharpDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: colors.primary,
+  statusPill: {
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+    borderWidth: 1,
+    borderColor: colors.borderLight,
+    borderRadius: 0,
+  },
+  statusPillActive: {
+    borderColor: colors.primary,
+    backgroundColor: 'rgba(255, 107, 0, 0.15)',
+  },
+  statusPillText: {
+    color: colors.textDim,
+    fontSize: 10,
+    fontWeight: '800',
+  },
+  statusPillTextActive: {
+    color: colors.primary,
+    fontWeight: '900',
+  },
+  actionBlock: {
+    padding: 20,
+    gap: 10,
   },
   enterButton: {
     backgroundColor: colors.primary,
-    paddingVertical: 15,
+    paddingVertical: 14,
     paddingHorizontal: 20,
     alignItems: 'center',
-    margin: 20,
-    marginBottom: 8,
-    borderRadius: radii.md,
-    shadowColor: colors.primary,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.35,
-    shadowRadius: 8,
-    elevation: 4,
+    borderRadius: 0,
   },
   enterButtonText: {
     color: '#FFFFFF',
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: '900',
-    letterSpacing: 0.8,
+    letterSpacing: 1,
   },
   publicLinkButton: {
-    backgroundColor: colors.bgInput,
+    backgroundColor: colors.bgDark,
     paddingVertical: 12,
     paddingHorizontal: 16,
     alignItems: 'center',
-    marginHorizontal: 20,
-    marginBottom: 20,
     borderWidth: 1,
-    borderColor: colors.borderSubtle,
-    borderRadius: radii.md,
+    borderColor: colors.borderLight,
+    borderRadius: 0,
   },
   publicLinkText: {
     color: colors.textMuted,
-    fontSize: 12,
-    fontWeight: '600',
+    fontSize: 11,
+    fontWeight: '700',
+    letterSpacing: 0.5,
   },
   footerNote: {
     borderTopWidth: 1,
@@ -337,5 +412,6 @@ const styles = StyleSheet.create({
   footerText: {
     color: colors.textDim,
     fontSize: 10,
+    letterSpacing: 0.3,
   },
 });

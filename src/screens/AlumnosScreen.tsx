@@ -29,11 +29,46 @@ export const AlumnosScreen: React.FC = () => {
   const [mobileTab, setMobileTab] = useState<'LIST' | 'DETAIL'>('LIST');
 
   const [search, setSearch] = useState('');
-  const [filterSection, setFilterSection] = useState<'ALL' | 'sec-1' | 'sec-2' | 'sec-3' | 'sec-4'>('ALL');
+  type FilterAgeGroup = 'ALL' | 'PREESCOLAR' | 'ADOLESCENTES' | 'ADULTOS';
+  const [filterSection, setFilterSection] = useState<FilterAgeGroup>('ALL');
 
   // Filtrar alumnos por la escuela activa
   const targetAcademiaId = currentAcademia?.id || CENTRAL_ACADEMIA_ID;
   const schoolStudents = students.filter((s) => matchAcademia(s.academia_id, targetAcademiaId));
+
+  // Cálculo de conteos por grupo etario en esta sede
+  const countPreescolar = schoolStudents.filter((s) => {
+    if (s.seccion_id === 'sec-1' || s.seccion_id === 'sec-2') return true;
+    if (s.fecha_nacimiento) {
+      const parts = s.fecha_nacimiento.split('-');
+      const y = parseInt(parts[0], 10);
+      const age = new Date().getFullYear() - y;
+      return age >= 4 && age <= 6;
+    }
+    return false;
+  }).length;
+
+  const countAdolescentes = schoolStudents.filter((s) => {
+    if (s.seccion_id === 'sec-3') return true;
+    if (s.fecha_nacimiento) {
+      const parts = s.fecha_nacimiento.split('-');
+      const y = parseInt(parts[0], 10);
+      const age = new Date().getFullYear() - y;
+      return age >= 7 && age <= 15;
+    }
+    return false;
+  }).length;
+
+  const countAdultos = schoolStudents.filter((s) => {
+    if (s.seccion_id === 'sec-4') return true;
+    if (s.fecha_nacimiento) {
+      const parts = s.fecha_nacimiento.split('-');
+      const y = parseInt(parts[0], 10);
+      const age = new Date().getFullYear() - y;
+      return age >= 16;
+    }
+    return false;
+  }).length;
 
   // Alumno seleccionado dentro de la escuela activa
   const selectedStudent = schoolStudents.find((s) => s.id === selectedStudentId) || schoolStudents[0] || null;
@@ -62,7 +97,41 @@ export const AlumnosScreen: React.FC = () => {
       s.apellidos.toLowerCase().includes(search.toLowerCase()) ||
       (s.rut && s.rut.includes(search));
 
-    const matchesSection = filterSection === 'ALL' || s.seccion_id === filterSection;
+    const matchesSection = (() => {
+      if (filterSection === 'ALL') return true;
+      if (filterSection === 'PREESCOLAR') {
+        if (s.seccion_id === 'sec-1' || s.seccion_id === 'sec-2') return true;
+        if (s.fecha_nacimiento) {
+          const parts = s.fecha_nacimiento.split('-');
+          const y = parseInt(parts[0], 10);
+          const age = new Date().getFullYear() - y;
+          return age >= 4 && age <= 6;
+        }
+        return false;
+      }
+      if (filterSection === 'ADOLESCENTES') {
+        if (s.seccion_id === 'sec-3') return true;
+        if (s.fecha_nacimiento) {
+          const parts = s.fecha_nacimiento.split('-');
+          const y = parseInt(parts[0], 10);
+          const age = new Date().getFullYear() - y;
+          return age >= 7 && age <= 15;
+        }
+        return false;
+      }
+      if (filterSection === 'ADULTOS') {
+        if (s.seccion_id === 'sec-4') return true;
+        if (s.fecha_nacimiento) {
+          const parts = s.fecha_nacimiento.split('-');
+          const y = parseInt(parts[0], 10);
+          const age = new Date().getFullYear() - y;
+          return age >= 16;
+        }
+        return false;
+      }
+      return true;
+    })();
+
     return matchesSearch && matchesSection;
   });
 
@@ -160,7 +229,7 @@ export const AlumnosScreen: React.FC = () => {
             onPress={() => setMobileTab('LIST')}
           >
             <Text style={[styles.mobileTabBtnText, mobileTab === 'LIST' && styles.mobileTabBtnTextActive]}>
-              👥 LISTA ({filteredStudents.length})
+              LISTA ({filteredStudents.length})
             </Text>
           </TouchableOpacity>
 
@@ -170,7 +239,7 @@ export const AlumnosScreen: React.FC = () => {
             disabled={!selectedStudent}
           >
             <Text style={[styles.mobileTabBtnText, mobileTab === 'DETAIL' && styles.mobileTabBtnTextActive]}>
-              🥋 FICHA TÉCNICA
+              FICHA TÉCNICA
             </Text>
           </TouchableOpacity>
         </View>
@@ -200,7 +269,7 @@ export const AlumnosScreen: React.FC = () => {
                     activeOpacity={0.8}
                   >
                     <Text style={[styles.sedePillBtnText, isCurrent && styles.sedePillBtnTextActive]}>
-                      {isCurrent ? '🥋 ' : ''}{ac.nombre.replace('Dojo Shito Ryu ', '')} ({countInSede})
+                      {isCurrent ? '● ' : ''}{ac.nombre.replace('Dojo Shito Ryu ', '')} ({countInSede})
                     </Text>
                   </TouchableOpacity>
                 );
@@ -218,43 +287,45 @@ export const AlumnosScreen: React.FC = () => {
             />
           </View>
 
-          {/* Filtros de Secciones */}
+          {/* Filtros de Secciones por Grupos Etarios */}
           <View style={styles.filterPillsRow}>
-            <TouchableOpacity
-              style={[styles.filterPill, filterSection === 'ALL' && styles.filterPillActive]}
-              onPress={() => setFilterSection('ALL')}
-            >
-              <Text style={[styles.filterPillText, filterSection === 'ALL' && styles.filterPillTextActive]}>
-                TODOS ({schoolStudents.length})
-              </Text>
-            </TouchableOpacity>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 6, paddingHorizontal: 12 }}>
+              <TouchableOpacity
+                style={[styles.filterPill, filterSection === 'ALL' && styles.filterPillActive]}
+                onPress={() => setFilterSection('ALL')}
+              >
+                <Text style={[styles.filterPillText, filterSection === 'ALL' && styles.filterPillTextActive]}>
+                  TODOS ({schoolStudents.length})
+                </Text>
+              </TouchableOpacity>
 
-            <TouchableOpacity
-              style={[styles.filterPill, filterSection === 'sec-1' && styles.filterPillActive]}
-              onPress={() => setFilterSection('sec-1')}
-            >
-              <Text style={[styles.filterPillText, filterSection === 'sec-1' && styles.filterPillTextActive]}>
-                GRUPO I
-              </Text>
-            </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.filterPill, filterSection === 'PREESCOLAR' && styles.filterPillActive]}
+                onPress={() => setFilterSection('PREESCOLAR')}
+              >
+                <Text style={[styles.filterPillText, filterSection === 'PREESCOLAR' && styles.filterPillTextActive]}>
+                  PREESCOLAR (4-6) ({countPreescolar})
+                </Text>
+              </TouchableOpacity>
 
-            <TouchableOpacity
-              style={[styles.filterPill, filterSection === 'sec-3' && styles.filterPillActive]}
-              onPress={() => setFilterSection('sec-3')}
-            >
-              <Text style={[styles.filterPillText, filterSection === 'sec-3' && styles.filterPillTextActive]}>
-                ADOLESCENTES
-              </Text>
-            </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.filterPill, filterSection === 'ADOLESCENTES' && styles.filterPillActive]}
+                onPress={() => setFilterSection('ADOLESCENTES')}
+              >
+                <Text style={[styles.filterPillText, filterSection === 'ADOLESCENTES' && styles.filterPillTextActive]}>
+                  ADOLESCENTES (7-15) ({countAdolescentes})
+                </Text>
+              </TouchableOpacity>
 
-            <TouchableOpacity
-              style={[styles.filterPill, filterSection === 'sec-4' && styles.filterPillActive]}
-              onPress={() => setFilterSection('sec-4')}
-            >
-              <Text style={[styles.filterPillText, filterSection === 'sec-4' && styles.filterPillTextActive]}>
-                ADULTOS
-              </Text>
-            </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.filterPill, filterSection === 'ADULTOS' && styles.filterPillActive]}
+                onPress={() => setFilterSection('ADULTOS')}
+              >
+                <Text style={[styles.filterPillText, filterSection === 'ADULTOS' && styles.filterPillTextActive]}>
+                  ADULTOS (16+) ({countAdultos})
+                </Text>
+              </TouchableOpacity>
+            </ScrollView>
           </View>
 
           {/* Lista de Alumnos */}
@@ -292,7 +363,7 @@ export const AlumnosScreen: React.FC = () => {
                           {s.nombres} {s.apellidos}
                         </Text>
                         <Text style={styles.studentCardMeta} numberOfLines={1}>
-                          {s.rut || '⚠ Sin RUT'} • {s.peso_actual_kg ? `${s.peso_actual_kg}kg` : 'Sin peso'}
+                          {s.rut || 'Sin RUT'} • {s.peso_actual_kg ? `${s.peso_actual_kg}kg` : 'Sin peso'}
                         </Text>
                       </View>
                       <View style={[styles.paymentDot, { backgroundColor: alDia ? colors.success : colors.danger }]} />
@@ -340,7 +411,7 @@ export const AlumnosScreen: React.FC = () => {
                       onPress={handlePickPhoto}
                       activeOpacity={0.85}
                     >
-                      <Text style={styles.changePhotoBtnText}>📷 SUBIR FOTO</Text>
+                      <Text style={styles.changePhotoBtnText}>SUBIR FOTO</Text>
                     </TouchableOpacity>
                   </View>
 
@@ -350,51 +421,19 @@ export const AlumnosScreen: React.FC = () => {
                     </Text>
                     <Text style={styles.profileRut}>RUT: {selectedStudent.rut || 'No registrado aún'}</Text>
                     <Text style={styles.profileSchool}>
-                      Escuela: <Text style={{ color: colors.textPrimary, fontWeight: '800' }}>{currentAcademia?.nombre || 'Dojo Central'}</Text>
+                      Escuela: <Text style={{ color: colors.textPrimary, fontWeight: '800' }}>
+                        {academias.find((a) => matchAcademia(selectedStudent.academia_id, a.id))?.nombre || currentAcademia?.nombre || 'Dojo Central'}
+                      </Text>
                     </Text>
 
                     <View style={[styles.badgeTagsRow, isMobile && { justifyContent: 'center' }]}>
                       <View style={styles.beltBadge}>
-                        <Text style={styles.beltText}>🥋 {cinturon.nombre.toUpperCase()}</Text>
+                        <Text style={styles.beltText}>{cinturon.nombre.toUpperCase()}</Text>
                       </View>
-                      <View style={[styles.financeBadge, { backgroundColor: isUpToDate ? colors.successBg : colors.dangerBg, borderColor: isUpToDate ? colors.successBorder : colors.dangerBorder }]}>
+                      <View style={[styles.financeBadge, { backgroundColor: isUpToDate ? 'rgba(16, 185, 129, 0.12)' : 'rgba(239, 68, 68, 0.12)', borderColor: isUpToDate ? 'rgba(16, 185, 129, 0.35)' : 'rgba(239, 68, 68, 0.35)' }]}>
                         <Text style={[styles.financeText, { color: isUpToDate ? colors.success : colors.danger }]}>
-                          {isUpToDate ? '✓ MENSUALIDAD AL DÍA' : '⚠ MENSUALIDAD PENDIENTE'}
+                          {isUpToDate ? 'MENSUALIDAD AL DÍA' : 'MENSUALIDAD PENDIENTE'}
                         </Text>
-                      </View>
-                    </View>
-
-                    {/* Selector Rápido de Sede del Alumno */}
-                    <View style={styles.studentSedeTransferWrap}>
-                      <Text style={styles.studentSedeTransferLabel}>MUDAR ALUMNO A OTRA SEDE:</Text>
-                      <View style={[styles.studentSedeTransferRow, isMobile && { justifyContent: 'center' }]}>
-                        {academias.map((ac) => {
-                          const isAssigned = matchAcademia(selectedStudent.academia_id, ac.id);
-                          return (
-                            <TouchableOpacity
-                              key={ac.id}
-                              style={[
-                                styles.studentSedeTransferBtn,
-                                isAssigned && styles.studentSedeTransferBtnActive,
-                              ]}
-                              onPress={() => {
-                                reassignStudentAcademia(selectedStudent.id, ac.id);
-                                setSaveSuccess(true);
-                                setTimeout(() => setSaveSuccess(false), 2000);
-                              }}
-                              activeOpacity={0.8}
-                            >
-                              <Text
-                                style={[
-                                  styles.studentSedeTransferBtnText,
-                                  isAssigned && styles.studentSedeTransferBtnTextActive,
-                                ]}
-                              >
-                                {isAssigned ? '✓ ' : ''}{ac.nombre.replace('Dojo Shito Ryu ', '')}
-                              </Text>
-                            </TouchableOpacity>
-                          );
-                        })}
                       </View>
                     </View>
                   </View>
@@ -405,7 +444,7 @@ export const AlumnosScreen: React.FC = () => {
                     activeOpacity={0.8}
                   >
                     <Text style={styles.editActionBtnText}>
-                      {isEditing ? '✕ CANCELAR' : '✏️ EDITAR FICHA'}
+                      {isEditing ? 'CANCELAR' : 'EDITAR FICHA'}
                     </Text>
                   </TouchableOpacity>
                 </View>
@@ -429,7 +468,7 @@ export const AlumnosScreen: React.FC = () => {
                         placeholderTextColor={colors.textDim}
                       />
                       {editRut && !validarRut(editRut) && (
-                        <Text style={styles.errorText}>⚠ Dígito verificador no válido</Text>
+                        <Text style={styles.errorText}>Dígito verificador no válido</Text>
                       )}
                     </View>
 
@@ -562,7 +601,7 @@ export const AlumnosScreen: React.FC = () => {
 
                   <View style={styles.saveActionRow}>
                     <TouchableOpacity style={styles.btnSave} onPress={handleSaveStudent}>
-                      <Text style={styles.btnSaveText}>💾 GUARDAR CAMBIOS EN LA FICHA</Text>
+                      <Text style={styles.btnSaveText}>GUARDAR CAMBIOS EN LA FICHA</Text>
                     </TouchableOpacity>
                   </View>
                 </View>
@@ -595,6 +634,13 @@ export const AlumnosScreen: React.FC = () => {
                       <Text style={styles.techItemLabel}>COLEGIO / TRABAJO</Text>
                       <Text style={styles.techItemVal} numberOfLines={1}>
                         {selectedStudent.lugar_estudio_trabajo || 'Sin registrar'}
+                      </Text>
+                    </View>
+
+                    <View style={styles.techItem}>
+                      <Text style={styles.techItemLabel}>GRADO Y KYU ACTUAL</Text>
+                      <Text style={[styles.techItemVal, { color: colors.primary, fontWeight: '800' }]}>
+                        {cinturon.nombre}
                       </Text>
                     </View>
 
@@ -649,7 +695,6 @@ export const AlumnosScreen: React.FC = () => {
             </ScrollView>
           ) : (
             <View style={styles.emptyCentered}>
-              <Text style={styles.emptyCenteredIcon}>🥋</Text>
               <Text style={styles.emptyCenteredTitle}>
                 {schoolStudents.length === 0
                   ? 'NO HAY ALUMNOS EN ESTA SEDE'
@@ -667,7 +712,7 @@ export const AlumnosScreen: React.FC = () => {
                   activeOpacity={0.8}
                 >
                   <Text style={styles.btnEmptyGoConfigText}>
-                    ⚙️ IR A CONFIGURACIÓN PARA ASIGNAR O TRASLADAR ALUMNOS
+                    IR A CONFIGURACIÓN PARA ASIGNAR O TRASLADAR ALUMNOS
                   </Text>
                 </TouchableOpacity>
               )}
@@ -738,7 +783,7 @@ export const AlumnosScreen: React.FC = () => {
                     style={styles.closeModalBtn}
                     onPress={() => setShowCategoryPicker(null)}
                   >
-                    <Text style={styles.closeModalBtnText}>✕ CERRAR</Text>
+                    <Text style={styles.closeModalBtnText}>CERRAR</Text>
                   </TouchableOpacity>
                 </View>
               </View>
@@ -946,7 +991,7 @@ const styles = StyleSheet.create({
   paymentDot: {
     width: 8,
     height: 8,
-    borderRadius: 4,
+    borderRadius: 0,
   },
   cardArrow: {
     color: colors.primary,
@@ -1213,7 +1258,7 @@ const styles = StyleSheet.create({
   beltColorIndicator: {
     width: 10,
     height: 10,
-    borderRadius: 5,
+    borderRadius: 0,
   },
   beltChoiceText: {
     color: colors.textMuted,

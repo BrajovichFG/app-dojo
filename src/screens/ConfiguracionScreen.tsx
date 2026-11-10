@@ -155,20 +155,20 @@ export const ConfiguracionScreen: React.FC = () => {
       {/* Encabezado del Módulo */}
       <View style={styles.headerSquare}>
         <View style={styles.headerRibbon}>
-          <Text style={styles.headerRibbonText}>PANEL DE CONTROL GENERAL DEL DOJO</Text>
+          <Text style={styles.headerRibbonText}>PANEL DE CONTROL GENERAL</Text>
         </View>
         <View style={[styles.headerBody, isMobile && { flexDirection: 'column', alignItems: 'flex-start', gap: 12 }]}>
           <View style={{ flex: 1 }}>
-            <Text style={styles.title}>CONFIGURACIÓN DE SEDES, PROFESORES Y REGLAS</Text>
+            <Text style={styles.title}>CONFIGURACIONES</Text>
             <Text style={styles.subtitle}>
-              Administración de las escuelas asociadas, asignación de sedes a profesores y control de alumnos
+              Administración de sedes asociadas, traslados de alumnos y reglas oficiales WKF
             </Text>
           </View>
           <View style={[styles.roleBadgeContainer, isMobile && { alignItems: 'flex-start' }]}>
             <Text style={styles.roleBadgeLabel}>PERFIL ACTIVO:</Text>
             <View style={[styles.roleBadgeSquare, isDueno ? styles.badgeDueno : styles.badgeProfe]}>
               <Text style={styles.roleBadgeText}>
-                {isDueno ? '👑 SENSEI DUEÑO (ADMIN GENERAL)' : '🥋 PROFESOR AUTORIZADO'}
+                {isDueno ? 'DUEÑO (ADMIN GENERAL)' : 'PROFESOR AUTORIZADO'}
               </Text>
             </View>
           </View>
@@ -185,7 +185,7 @@ export const ConfiguracionScreen: React.FC = () => {
             onPress={() => setActiveSubTab('sedes')}
           >
             <Text style={[styles.subTabText, activeSubTab === 'sedes' && styles.subTabTextActive]}>
-              🏛️ ESCUELAS Y SEDES ({academias.length})
+              ESCUELAS Y SEDES ({academias.length})
             </Text>
           </TouchableOpacity>
 
@@ -194,7 +194,7 @@ export const ConfiguracionScreen: React.FC = () => {
             onPress={() => setActiveSubTab('profesores')}
           >
             <Text style={[styles.subTabText, activeSubTab === 'profesores' && styles.subTabTextActive]}>
-              🥋 PROFESORES Y ASIGNACIÓN ({users.length})
+              PROFESORES Y PERMISOS ({users.length})
             </Text>
           </TouchableOpacity>
 
@@ -203,7 +203,7 @@ export const ConfiguracionScreen: React.FC = () => {
             onPress={() => setActiveSubTab('traslados')}
           >
             <Text style={[styles.subTabText, activeSubTab === 'traslados' && styles.subTabTextActive]}>
-              🔄 ASIGNAR ALUMNOS ({students.length})
+              ASIGNACIÓN DE ALUMNOS ({students.length})
             </Text>
           </TouchableOpacity>
 
@@ -212,7 +212,7 @@ export const ConfiguracionScreen: React.FC = () => {
             onPress={() => setActiveSubTab('categorias')}
           >
             <Text style={[styles.subTabText, activeSubTab === 'categorias' && styles.subTabTextActive]}>
-              🥋 CATEGORÍAS WKF ({allCategories.length})
+              CATEGORÍAS Y REGLAS WKF ({allCategories.length})
             </Text>
           </TouchableOpacity>
         </ScrollView>
@@ -228,12 +228,14 @@ export const ConfiguracionScreen: React.FC = () => {
                 Cada escuela mantiene sus propios horarios, mensualidades y nómina de alumnos.
               </Text>
             </View>
-            <TouchableOpacity
-              style={styles.btnActionSquare}
-              onPress={() => setShowAddSedeModal(true)}
-            >
-              <Text style={styles.btnActionText}>+ AGREGAR NUEVA ESCUELA / SEDE</Text>
-            </TouchableOpacity>
+            {isDueno && (
+              <TouchableOpacity
+                style={styles.btnActionSquare}
+                onPress={() => setShowAddSedeModal(true)}
+              >
+                <Text style={styles.btnActionText}>+ AGREGAR NUEVA ESCUELA / SEDE</Text>
+              </TouchableOpacity>
+            )}
           </View>
 
           <View style={styles.cardsGrid}>
@@ -282,7 +284,7 @@ export const ConfiguracionScreen: React.FC = () => {
                       </View>
                     </View>
 
-                    {!isMatriz && (
+                    {!isMatriz && isDueno && (
                       <TouchableOpacity
                         style={styles.deleteSedeBtnSquare}
                         onPress={() => {
@@ -291,7 +293,7 @@ export const ConfiguracionScreen: React.FC = () => {
                           }
                         }}
                       >
-                        <Text style={styles.deleteSedeBtnText}>🗑️ ELIMINAR SEDE</Text>
+                        <Text style={styles.deleteSedeBtnText}>ELIMINAR SEDE</Text>
                       </TouchableOpacity>
                     )}
                   </View>
@@ -307,18 +309,19 @@ export const ConfiguracionScreen: React.FC = () => {
         <View style={styles.tabContent}>
           <View style={[styles.infoNoticeSquare, isMobile && { flexDirection: 'column', alignItems: 'stretch' }]}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-              <Text style={styles.infoNoticeIcon}>ℹ️</Text>
               <Text style={styles.infoNoticeTitle}>MATRIZ DE PRIVILEGIOS Y ASIGNACIÓN DE ESCUELAS</Text>
             </View>
             <Text style={styles.infoNoticeDesc}>
               El Sensei Dueño (<Text style={{ fontWeight: '700', color: colors.textPrimary }}>ADMIN GENERAL</Text>) puede activar o desactivar las escuelas en las que cada profesor tiene permitido entrar para ver alumnos, tomar asistencias y planificar clases.
             </Text>
-            <TouchableOpacity
-              style={styles.btnActionSquare}
-              onPress={() => setShowAddUserModal(true)}
-            >
-              <Text style={styles.btnActionText}>+ NUEVO PROFESOR</Text>
-            </TouchableOpacity>
+            {isDueno && (
+              <TouchableOpacity
+                style={styles.btnActionSquare}
+                onPress={() => setShowAddUserModal(true)}
+              >
+                <Text style={styles.btnActionText}>+ NUEVO PROFESOR</Text>
+              </TouchableOpacity>
+            )}
           </View>
 
           <View style={styles.usersList}>
@@ -338,7 +341,7 @@ export const ConfiguracionScreen: React.FC = () => {
                       ]}
                     >
                       <Text style={styles.userBadgeText}>
-                        {isUserDueno ? '👑 DUEÑO (ADMIN GENERAL)' : `🥋 ${usr.rol}`}
+                        {isUserDueno ? 'DUEÑO (ADMIN GENERAL)' : usr.rol}
                       </Text>
                     </View>
                   </View>
@@ -440,7 +443,26 @@ export const ConfiguracionScreen: React.FC = () => {
                   filtroSedeTraslado === 'ALL' && styles.schoolPillTextActive,
                 ]}
               >
-                TODAS LAS SEDES ({students.length})
+                TODOS LOS ALUMNOS ({students.length})
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[
+                styles.schoolPill,
+                filtroSedeTraslado === 'SIN_ASIGNAR' && styles.schoolPillActive,
+                students.filter((s) => !s.academia_id).length > 0 && { borderColor: colors.accent },
+              ]}
+              onPress={() => setFiltroSedeTraslado('SIN_ASIGNAR')}
+            >
+              <Text
+                style={[
+                  styles.schoolPillText,
+                  filtroSedeTraslado === 'SIN_ASIGNAR' && styles.schoolPillTextActive,
+                  students.filter((s) => !s.academia_id).length > 0 && { color: colors.accent, fontWeight: '900' },
+                ]}
+              >
+                ⚠️ SIN ASIGNAR ({students.filter((s) => !s.academia_id).length})
               </Text>
             </TouchableOpacity>
 
@@ -487,7 +509,11 @@ export const ConfiguracionScreen: React.FC = () => {
                     `${s.nombres} ${s.apellidos}`.toLowerCase().includes(filtroAlumno.toLowerCase()) ||
                     (s.rut && s.rut.includes(filtroAlumno));
                   const matchesSede =
-                    filtroSedeTraslado === 'ALL' || matchAcademia(s.academia_id, filtroSedeTraslado);
+                    filtroSedeTraslado === 'ALL'
+                      ? true
+                      : filtroSedeTraslado === 'SIN_ASIGNAR'
+                      ? !s.academia_id
+                      : matchAcademia(s.academia_id, filtroSedeTraslado);
                   return matchesText && matchesSede;
                 })
                 .map((st) => {
@@ -497,6 +523,11 @@ export const ConfiguracionScreen: React.FC = () => {
                         <Text style={styles.studentNameTh}>
                           {st.nombres} {st.apellidos}
                         </Text>
+                        {!st.academia_id && (
+                          <Text style={{ color: colors.accent, fontSize: 10, fontWeight: '900', marginTop: 2 }}>
+                            ⚠️ SIN SEDE ASIGNADA
+                          </Text>
+                        )}
                       </View>
                       <Text style={[styles.tableTd, { flex: 1 }]}>{st.rut || 'Sin RUT'}</Text>
                       <Text style={[styles.tableTd, { flex: 1.5 }]}>
@@ -546,7 +577,11 @@ export const ConfiguracionScreen: React.FC = () => {
                     `${s.nombres} ${s.apellidos}`.toLowerCase().includes(filtroAlumno.toLowerCase()) ||
                     (s.rut && s.rut.includes(filtroAlumno));
                   const matchesSede =
-                    filtroSedeTraslado === 'ALL' || matchAcademia(s.academia_id, filtroSedeTraslado);
+                    filtroSedeTraslado === 'ALL'
+                      ? true
+                      : filtroSedeTraslado === 'SIN_ASIGNAR'
+                      ? !s.academia_id
+                      : matchAcademia(s.academia_id, filtroSedeTraslado);
                   return matchesText && matchesSede;
                 })
                 .map((st) => {
@@ -556,12 +591,17 @@ export const ConfiguracionScreen: React.FC = () => {
                         <Text style={styles.studentNameTh}>
                           {st.nombres} {st.apellidos}
                         </Text>
+                        {!st.academia_id && (
+                          <Text style={{ color: colors.accent, fontSize: 11, fontWeight: '900', marginVertical: 2 }}>
+                            ⚠️ SIN SEDE ASIGNADA (PENDIENTE ASIGNACIÓN)
+                          </Text>
+                        )}
                         <Text style={styles.tableTd}>
                           {st.rut || 'Sin RUT'} • {st.seccion_id === 'sec-1' ? 'Grupo I (4-6)' : st.seccion_id === 'sec-2' ? 'Grupo II (4-6)' : st.seccion_id === 'sec-3' ? 'Adolescentes' : 'Adultos'}
                         </Text>
                       </View>
 
-                      <Text style={styles.mobileSedePrompt}>SEDE ASIGNADA (TOCA PARA CAMBIAR):</Text>
+                      <Text style={styles.mobileSedePrompt}>SEDE ASIGNADA (TOCA PARA ASIGNAR O CAMBIAR):</Text>
                       <View style={{ flexDirection: 'row', gap: 6, flexWrap: 'wrap' }}>
                         {academias.map((ac) => {
                           const isAssigned = matchAcademia(st.academia_id, ac.id);
@@ -619,7 +659,6 @@ export const ConfiguracionScreen: React.FC = () => {
             </View>
             <View style={styles.ruleExplainBody}>
               <View style={[styles.ruleBoxSquare, isMobile && { minWidth: '100%' }]}>
-                <Text style={styles.ruleIcon}>🎂</Text>
                 <View style={{ flex: 1 }}>
                   <Text style={styles.ruleTitle}>TRANSICIÓN POR EDAD CRONOLÓGICA</Text>
                   <Text style={styles.ruleDesc}>
@@ -629,7 +668,6 @@ export const ConfiguracionScreen: React.FC = () => {
               </View>
 
               <View style={[styles.ruleBoxSquare, isMobile && { minWidth: '100%' }]}>
-                <Text style={styles.ruleIcon}>⚖️</Text>
                 <View style={{ flex: 1 }}>
                   <Text style={styles.ruleTitle}>AVANCE Y RETROCESO POR PESAJE CORPORAL</Text>
                   <Text style={styles.ruleDesc}>
@@ -643,7 +681,7 @@ export const ConfiguracionScreen: React.FC = () => {
           {/* Probador / Simulador en Tiempo Real */}
           <View style={styles.simulatorCardSquare}>
             <View style={styles.simulatorHeader}>
-              <Text style={styles.simulatorTitle}>🧪 SIMULADOR Y PROBADOR DE REGLAS EN TIEMPO REAL</Text>
+              <Text style={styles.simulatorTitle}>SIMULADOR Y PROBADOR DE REGLAS EN TIEMPO REAL</Text>
               <Text style={styles.simulatorSub}>
                 Ingresa una fecha de nacimiento ficticia o real y un peso para verificar la asignación automática:
               </Text>
@@ -813,7 +851,7 @@ export const ConfiguracionScreen: React.FC = () => {
 
                       <View style={{ flex: 2 }}>
                         <Text style={styles.catEtiquetaText}>{cat.nombre_etiqueta}</Text>
-                        {isCustom && <Text style={styles.customBadgeNotice}>★ REGLA PERSONALIZADA</Text>}
+                        {isCustom && <Text style={styles.customBadgeNotice}>REGLA PERSONALIZADA</Text>}
                       </View>
 
                       <Text style={[styles.tableTd, { flex: 1.2, fontWeight: '700' }]}>{cat.division}</Text>
@@ -848,7 +886,7 @@ export const ConfiguracionScreen: React.FC = () => {
                             style={styles.deleteCatBtnSquare}
                             onPress={() => deleteCustomCategory(cat.id)}
                           >
-                            <Text style={styles.deleteCatBtnText}>🗑️ BORRAR</Text>
+                            <Text style={styles.deleteCatBtnText}>BORRAR</Text>
                           </TouchableOpacity>
                         ) : (
                           <Text style={styles.standardCatLabel}>WKF Oficial</Text>
@@ -908,7 +946,7 @@ export const ConfiguracionScreen: React.FC = () => {
 
                       <Text style={styles.catEtiquetaText}>{cat.nombre_etiqueta}</Text>
                       <Text style={[styles.tableTd, { marginTop: 4 }]}>
-                        🎂 {cat.edad_min} a {cat.edad_max === 99 ? '18+' : `${cat.edad_max}`} años • ⚖️ {cat.modalidad === 'KUMITE' ? `${cat.peso_min_kg ?? 0} a ${cat.peso_max_kg === 999 ? '+70' : cat.peso_max_kg} kg` : 'Sin límite'}
+                        {cat.edad_min} a {cat.edad_max === 99 ? '18+' : `${cat.edad_max}`} años • {cat.modalidad === 'KUMITE' ? `${cat.peso_min_kg ?? 0} a ${cat.peso_max_kg === 999 ? '+70' : cat.peso_max_kg} kg` : 'Sin límite'}
                       </Text>
 
                       <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 10, paddingTop: 8, borderTopWidth: 1, borderColor: colors.border }}>
@@ -928,7 +966,7 @@ export const ConfiguracionScreen: React.FC = () => {
                             style={styles.deleteCatBtnSquare}
                             onPress={() => deleteCustomCategory(cat.id)}
                           >
-                            <Text style={styles.deleteCatBtnText}>🗑️ BORRAR</Text>
+                            <Text style={styles.deleteCatBtnText}>BORRAR</Text>
                           </TouchableOpacity>
                         )}
                       </View>
@@ -1008,7 +1046,7 @@ export const ConfiguracionScreen: React.FC = () => {
                   style={styles.saveBtnSquare}
                   onPress={handleCreateSede}
                 >
-                  <Text style={styles.saveBtnText}>✓ GUARDAR ESCUELA</Text>
+                  <Text style={styles.saveBtnText}>GUARDAR ESCUELA</Text>
                 </TouchableOpacity>
               </View>
             </View>
@@ -1074,7 +1112,7 @@ export const ConfiguracionScreen: React.FC = () => {
                         userRol === 'SENSEI' && styles.roleSelectTextActive,
                       ]}
                     >
-                      🥋 SENSEI (Titular)
+                      SENSEI (Titular)
                     </Text>
                   </TouchableOpacity>
 
@@ -1091,7 +1129,7 @@ export const ConfiguracionScreen: React.FC = () => {
                         userRol === 'INSTRUCTOR' && styles.roleSelectTextActive,
                       ]}
                     >
-                      🥋 INSTRUCTOR (Auxiliar)
+                      INSTRUCTOR (Auxiliar)
                     </Text>
                   </TouchableOpacity>
                 </View>
@@ -1109,7 +1147,7 @@ export const ConfiguracionScreen: React.FC = () => {
                   style={styles.saveBtnSquare}
                   onPress={handleCreateUser}
                 >
-                  <Text style={styles.saveBtnText}>✓ REGISTRAR PROFESOR</Text>
+                  <Text style={styles.saveBtnText}>REGISTRAR PROFESOR</Text>
                 </TouchableOpacity>
               </View>
             </View>
@@ -1255,7 +1293,7 @@ export const ConfiguracionScreen: React.FC = () => {
                   style={styles.saveBtnSquare}
                   onPress={handleCreateCategory}
                 >
-                  <Text style={styles.saveBtnText}>✓ CREAR REGLA DE CATEGORÍA</Text>
+                  <Text style={styles.saveBtnText}>CREAR REGLA DE CATEGORÍA</Text>
                 </TouchableOpacity>
               </View>
             </View>

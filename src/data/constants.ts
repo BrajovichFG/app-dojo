@@ -10,11 +10,13 @@ export const CATEGORIAS_PARA_KARATE_EXCEL: string[] = categoriesRaw.para_karate;
 
 export const CENTRAL_ACADEMIA_ID = '4fddd818-7ea1-489c-9790-8e55fd755d34';
 
-export function isCentralAcademia(id?: string): boolean {
-  return !id || id === 'acad-1' || id === CENTRAL_ACADEMIA_ID;
+export function isCentralAcademia(id?: string | null): boolean {
+  if (!id) return false;
+  return id === 'acad-1' || id === CENTRAL_ACADEMIA_ID;
 }
 
-export function matchAcademia(studentAcademiaId?: string, targetAcademiaId?: string): boolean {
+export function matchAcademia(studentAcademiaId?: string | null, targetAcademiaId?: string | null): boolean {
+  if (!studentAcademiaId || !targetAcademiaId) return false;
   if (isCentralAcademia(targetAcademiaId)) {
     return isCentralAcademia(studentAcademiaId);
   }
@@ -31,6 +33,24 @@ export const ACADEMIAS_DISPONIBLES: Academia[] = [
     email: 'contacto@shitoryurancagua.cl',
     created_at: '2024-01-01',
   },
+  {
+    id: 'acad-machali',
+    nombre: 'Sede Machalí Cordillera',
+    rut_titular: '14.285.923-1',
+    direccion: 'Av. San Juan #1050, Machalí',
+    telefono: '+56 9 8452 1190',
+    email: 'machali@shitoryurancagua.cl',
+    created_at: '2024-02-01',
+  },
+  {
+    id: 'acad-requinoa',
+    nombre: 'Sede Requínoa El Abra',
+    rut_titular: '14.285.923-1',
+    direccion: 'Camino El Abra s/n, Requínoa',
+    telefono: '+56 9 8452 1190',
+    email: 'requinoa@shitoryurancagua.cl',
+    created_at: '2024-03-01',
+  },
 ];
 
 export const USUARIOS_DISPONIBLES: Usuario[] = [
@@ -41,44 +61,26 @@ export const USUARIOS_DISPONIBLES: Usuario[] = [
     rol: 'ADMIN_GENERAL', // Dueño y Administrador Total
     telefono: '+56 9 8452 1190',
     activo: true,
-    academias: [ACADEMIAS_DISPONIBLES[0]],
-  },
-  {
-    id: 'usr-2',
-    email: 'rodrigo.gonzalez@karate.cl',
-    nombre_completo: 'Sensei Rodrigo González',
-    rol: 'SENSEI',
-    telefono: '+56 9 9123 4567',
-    activo: true,
-    academias: [ACADEMIAS_DISPONIBLES[0]],
-  },
-  {
-    id: 'usr-3',
-    email: 'andres.ortega@karate.cl',
-    nombre_completo: 'Instructor Andrés Ortega',
-    rol: 'INSTRUCTOR',
-    telefono: '+56 9 5543 2189',
-    activo: true,
-    academias: [ACADEMIAS_DISPONIBLES[0]],
+    academias: [ACADEMIAS_DISPONIBLES[0], ACADEMIAS_DISPONIBLES[1], ACADEMIAS_DISPONIBLES[2]],
   },
 ];
 
 export const GRADOS_CINTURON: GradoCinturon[] = [
-  { id: 1, nombre: 'Blanco (10° Kyu)', color_hex: '#FFFFFF', orden: 1, es_infantil: false },
-  { id: 2, nombre: 'Blanco Punta Amarilla', color_hex: '#FFFACD', orden: 2, es_infantil: true },
-  { id: 3, nombre: 'Amarillo (8° Kyu)', color_hex: '#FFD700', orden: 3, es_infantil: false },
-  { id: 4, nombre: 'Amarillo Punta Naranja', color_hex: '#FFB347', orden: 4, es_infantil: true },
-  { id: 5, nombre: 'Naranja (7° Kyu)', color_hex: '#FF8C00', orden: 5, es_infantil: false },
-  { id: 6, nombre: 'Naranja Punta Verde', color_hex: '#7FBF7F', orden: 6, es_infantil: true },
-  { id: 7, nombre: 'Verde (6° Kyu)', color_hex: '#228B22', orden: 7, es_infantil: false },
-  { id: 8, nombre: 'Verde Punta Azul', color_hex: '#4682B4', orden: 8, es_infantil: true },
-  { id: 9, nombre: 'Azul (5° Kyu)', color_hex: '#0000CD', orden: 9, es_infantil: false },
-  { id: 10, nombre: 'Azul Punta Café', color_hex: '#8B6914', orden: 10, es_infantil: true },
-  { id: 11, nombre: 'Café (3° Kyu)', color_hex: '#8B4513', orden: 11, es_infantil: false },
-  { id: 12, nombre: 'Café (2° Kyu)', color_hex: '#6B3410', orden: 12, es_infantil: false },
-  { id: 13, nombre: 'Café (1° Kyu)', color_hex: '#5C2D0E', orden: 13, es_infantil: false },
-  { id: 14, nombre: 'Negro 1° Dan', color_hex: '#0F172A', orden: 14, es_infantil: false },
-  { id: 15, nombre: 'Negro 2° Dan', color_hex: '#0F172A', orden: 15, es_infantil: false },
+  { id: 1, nombre: 'Blanco (10° Kyu - Jukyu)', color_hex: '#FFFFFF', orden: 1, es_infantil: false },
+  { id: 2, nombre: 'Blanco Punta Amarilla (9° Kyu - Kukyu)', color_hex: '#FFFACD', orden: 2, es_infantil: true },
+  { id: 3, nombre: 'Amarillo (8° Kyu - Hachikyu)', color_hex: '#FFD700', orden: 3, es_infantil: false },
+  { id: 4, nombre: 'Amarillo Punta Naranja (8° Kyu Avanzado)', color_hex: '#FFB347', orden: 4, es_infantil: true },
+  { id: 5, nombre: 'Naranja (7° Kyu - Nanakyu)', color_hex: '#FF8C00', orden: 5, es_infantil: false },
+  { id: 6, nombre: 'Naranja Punta Verde (7° Kyu Avanzado)', color_hex: '#7FBF7F', orden: 6, es_infantil: true },
+  { id: 7, nombre: 'Verde (6° Kyu - Rokukyu)', color_hex: '#228B22', orden: 7, es_infantil: false },
+  { id: 8, nombre: 'Verde Punta Azul (6° Kyu Avanzado)', color_hex: '#4682B4', orden: 8, es_infantil: true },
+  { id: 9, nombre: 'Azul (5° Kyu - Gokyu)', color_hex: '#0000CD', orden: 9, es_infantil: false },
+  { id: 10, nombre: 'Rojo / Púrpura (4° Kyu - Yonkyu)', color_hex: '#C026D3', orden: 10, es_infantil: false },
+  { id: 11, nombre: 'Café (3° Kyu - Sankyu)', color_hex: '#8B4513', orden: 11, es_infantil: false },
+  { id: 12, nombre: 'Café (2° Kyu - Nikyu)', color_hex: '#6B3410', orden: 12, es_infantil: false },
+  { id: 13, nombre: 'Café (1° Kyu - Ikkyu)', color_hex: '#5C2D0E', orden: 13, es_infantil: false },
+  { id: 14, nombre: 'Negro 1° Dan (Shodan)', color_hex: '#0F172A', orden: 14, es_infantil: false },
+  { id: 15, nombre: 'Negro 2° Dan (Nidan)', color_hex: '#0F172A', orden: 15, es_infantil: false },
 ];
 
 export const SECCIONES_INICIALES: Seccion[] = [

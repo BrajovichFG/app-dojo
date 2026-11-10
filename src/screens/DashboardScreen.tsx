@@ -113,7 +113,7 @@ export const DashboardScreen: React.FC = () => {
       <View style={styles.announcementCard}>
         <View style={styles.announcementHeader}>
           <View style={styles.announcementBadge}>
-            <Text style={styles.announcementBadgeText}>📢 TABLÓN DE ANUNCIOS OFICIAL</Text>
+            <Text style={styles.announcementBadgeText}>TABLÓN DE ANUNCIOS OFICIAL</Text>
           </View>
           <Text style={styles.announcementDate}>
             ESCUELA ACTIVA: {currentAcademia?.nombre.toUpperCase() || 'DOJO CENTRAL'}
@@ -131,7 +131,7 @@ export const DashboardScreen: React.FC = () => {
                   <Text style={styles.announcementMonth}>EVENTO</Text>
                 </View>
                 <View style={{ flex: 1 }}>
-                  <Text style={styles.announcementItemTitle}>🏆 {proximoEvento.nombre}</Text>
+                  <Text style={styles.announcementItemTitle}>{proximoEvento.nombre}</Text>
                   <Text style={styles.announcementItemDesc}>
                     Lugar: {proximoEvento.lugar || 'Por definir'} • Costo: ${proximoEvento.costo_inscripcion.toLocaleString('es-CL')} CLP • {proximoEvento.alumnos_inscritos_ids?.length || 0} inscritos.
                   </Text>
@@ -158,7 +158,7 @@ export const DashboardScreen: React.FC = () => {
                   <Text style={[styles.announcementMonth, { color: colors.accentGold }]}>EXAMEN</Text>
                 </View>
                 <View style={{ flex: 1 }}>
-                  <Text style={styles.announcementItemTitle}>🥋 {proximoExamen.nombre}</Text>
+                  <Text style={styles.announcementItemTitle}>{proximoExamen.nombre}</Text>
                   <Text style={styles.announcementItemDesc}>
                     Derecho a examen: ${proximoExamen.costo_derecho_examen.toLocaleString('es-CL')} CLP • Evaluación técnica para ascensos de grado.
                   </Text>
@@ -258,7 +258,7 @@ export const DashboardScreen: React.FC = () => {
           </View>
 
           <View style={styles.sectionCol}>
-            <View style={[styles.sectionBadge, { backgroundColor: colors.primary }]}>
+            <View style={styles.sectionBadge}>
               <Text style={styles.sectionBadgeText}>ADOLESCENTES (7 - 15 AÑOS)</Text>
             </View>
             <Text style={[styles.sectionCount, { color: colors.primary }]}>{countAdolescentes}</Text>
@@ -268,10 +268,10 @@ export const DashboardScreen: React.FC = () => {
           </View>
 
           <View style={styles.sectionCol}>
-            <View style={[styles.sectionBadge, { backgroundColor: colors.accentGold }]}>
-              <Text style={[styles.sectionBadgeText, { color: '#000000' }]}>JÓVENES Y ADULTOS (16+ AÑOS)</Text>
+            <View style={styles.sectionBadge}>
+              <Text style={styles.sectionBadgeText}>JÓVENES Y ADULTOS (16+ AÑOS)</Text>
             </View>
-            <Text style={[styles.sectionCount, { color: colors.accentGold }]}>{countAdultos}</Text>
+            <Text style={styles.sectionCount}>{countAdultos}</Text>
             <Text style={styles.sectionMeta}>
               {totalAlumnos > 0 ? Math.round((countAdultos / totalAlumnos) * 100) : 0}% del alumnado de esta sede
             </Text>
@@ -279,10 +279,10 @@ export const DashboardScreen: React.FC = () => {
 
           {countSinFecha > 0 && (
             <View style={styles.sectionCol}>
-              <View style={[styles.sectionBadge, { backgroundColor: colors.danger }]}>
-                <Text style={styles.sectionBadgeText}>EDAD PENDIENTE</Text>
+              <View style={[styles.sectionBadge, { borderColor: colors.borderLight }]}>
+                <Text style={[styles.sectionBadgeText, { color: colors.textMuted }]}>EDAD PENDIENTE</Text>
               </View>
-              <Text style={[styles.sectionCount, { color: colors.danger }]}>{countSinFecha}</Text>
+              <Text style={[styles.sectionCount, { color: colors.textMuted }]}>{countSinFecha}</Text>
               <Text style={styles.sectionMeta}>Falta ingresar fecha de nacimiento</Text>
             </View>
           )}
@@ -320,13 +320,13 @@ export const DashboardScreen: React.FC = () => {
 
                 <View style={styles.pendingDetailsCol}>
                   <Text style={styles.pendingDetailRow}>
-                    • RUT: <Text style={{ color: s.rut ? colors.success : colors.danger }}>{s.rut || 'No ingresado'}</Text>
+                    • RUT: <Text style={{ color: s.rut ? colors.textSecondary : colors.warning }}>{s.rut || 'No ingresado'}</Text>
                   </Text>
                   <Text style={styles.pendingDetailRow}>
-                    • Peso: <Text style={{ color: s.peso_actual_kg ? colors.success : colors.danger }}>{s.peso_actual_kg ? `${s.peso_actual_kg} kg` : 'No ingresado'}</Text>
+                    • Peso: <Text style={{ color: s.peso_actual_kg ? colors.textSecondary : colors.warning }}>{s.peso_actual_kg ? `${s.peso_actual_kg} kg` : 'No ingresado'}</Text>
                   </Text>
                   <Text style={styles.pendingDetailRow}>
-                    • Nacimiento: <Text style={{ color: s.fecha_nacimiento ? colors.success : colors.danger }}>{s.fecha_nacimiento || 'No ingresado'}</Text>
+                    • Nacimiento: <Text style={{ color: s.fecha_nacimiento ? colors.textSecondary : colors.warning }}>{s.fecha_nacimiento || 'No ingresado'}</Text>
                   </Text>
                 </View>
 
@@ -342,8 +342,7 @@ export const DashboardScreen: React.FC = () => {
 
           {schoolStudents.filter((s) => !s.rut || !s.peso_actual_kg || !s.fecha_nacimiento).length === 0 && (
             <View style={styles.allCompleteCard}>
-              <Text style={{ fontSize: 28, marginBottom: 8 }}>✅</Text>
-              <Text style={styles.allCompleteTitle}>¡TODAS LAS FICHAS TÉCNICAS COMPLETADAS!</Text>
+              <Text style={styles.allCompleteTitle}>✓ TODAS LAS FICHAS TÉCNICAS COMPLETADAS</Text>
               <Text style={styles.allCompleteSub}>
                 Los deportistas de {currentAcademia?.nombre || 'esta sede'} cuentan con sus registros biométricos al día.
               </Text>
@@ -376,7 +375,7 @@ export const DashboardScreen: React.FC = () => {
           <View style={[styles.footerBtnCol, isMobile && { width: '100%' }]}>
             <TouchableOpacity style={styles.btnCopyLink} onPress={handleCopyLink} activeOpacity={0.85}>
               <Text style={styles.btnCopyLinkText}>
-                {copiedLink ? '✓ ¡ENLACE COPIADO AL PORTAPAPELES!' : '📋 COPIAR ENLACE AL PORTAPAPELES'}
+                {copiedLink ? '✓ ¡ENLACE COPIADO AL PORTAPAPELES!' : 'COPIAR ENLACE AL PORTAPAPELES'}
               </Text>
             </TouchableOpacity>
 

@@ -16,9 +16,10 @@ export const MensualidadesScreen: React.FC = () => {
   const targetAcademiaId = currentAcademia?.id || CENTRAL_ACADEMIA_ID;
   const schoolStudents = students.filter((s) => matchAcademia(s.academia_id, targetAcademiaId));
 
+  const currentRealMonth = new Date().getMonth() + 1; // Ubicar automáticamente en el mes en curso (1-12)
   const [search, setSearch] = useState('');
-  const [selectedMonth, setSelectedMonth] = useState<number>(3); // Marzo por defecto
-  const [statusFilter, setStatusFilter] = useState<'ALL' | 'PAGADO' | 'PENDIENTE'>('ALL');
+  const [selectedMonth, setSelectedMonth] = useState<number>(currentRealMonth);
+  const [statusFilter, setStatusFilter] = useState<'ALL' | 'PAGADO' | 'DEUDA'>('ALL');
   const [receiptStudent, setReceiptStudent] = useState<Alumno | null>(null);
   const [receiptPaymentData, setReceiptPaymentData] = useState<{ monto: number; metodo: string } | null>(null);
   const [folioNumber, setFolioNumber] = useState('REC-2026-0042');
@@ -49,7 +50,7 @@ export const MensualidadesScreen: React.FC = () => {
     const matchesStatus =
       statusFilter === 'ALL' ||
       (statusFilter === 'PAGADO' && isPaid) ||
-      (statusFilter === 'PENDIENTE' && !isPaid);
+      (statusFilter === 'DEUDA' && !isPaid);
 
     return matchesSearch && matchesStatus;
   });
@@ -62,12 +63,30 @@ export const MensualidadesScreen: React.FC = () => {
 
   const handleOpenReceipt = (s: Alumno) => {
     setReceiptStudent(s);
-    const pData = payments[s.id]?.[selectedMonth] || { monto: 35000, metodo: 'TRANSFERENCIA' };
+    const pData = payments[s.id]?.[selectedMonth];
     setReceiptPaymentData({
-      monto: pData.monto || 35000,
-      metodo: pData.metodo || 'TRANSFERENCIA',
+      monto: pData?.monto || 35000,
+      metodo: pData?.metodo || 'TRANSFERENCIA',
     });
-    setFolioNumber(`BOU-2026-${Math.floor(1000 + Math.random() * 9000)}`);
+    setFolioNumber(`REC-2026-${s.id.replace(/\D/g, '').padStart(4, '0')}`);
+  };
+
+  const handleSendWhatsApp = () => {
+    if (!receiptStudent) return;
+    const msg = `*COMPROBANTE DE PAGO — DOJO SHITO RYU*%0A` +
+      `--------------------------------%0A` +
+      `Alumno: *${receiptStudent.nombres} ${receiptStudent.apellidos}*%0A` +
+      `RUT: ${receiptStudent.rut || 'No registrado'}%0A` +
+      `Mes Cancelado: *${meses[selectedMonth - 1].label.toUpperCase()} 2026*%0A` +
+      `Monto: *$${(receiptPaymentData?.monto || 35000).toLocaleString('es-CL')} CLP*%0A` +
+      `Estado: *PAGADO / AL DÍA*%0A` +
+      `Sede: ${currentAcademia?.nombre || 'Dojo Central'}%0A` +
+      `Folio: ${folioNumber}%0A` +
+      `--------------------------------%0A` +
+      `Sensei Milton Echeverría • Shito Ryu Kyokan Genbukai`;
+    if (typeof window !== 'undefined') {
+      window.open(`https://wa.me/?text=${msg}`, '_blank');
+    }
   };
 
   return (
@@ -105,7 +124,7 @@ export const MensualidadesScreen: React.FC = () => {
         <View style={[styles.searchBoxWrap, isMobile && { width: '100%', minWidth: 0 }]}>
           <TextInput
             style={styles.searchInput}
-            placeholder="🔍 Buscar por nombre o RUT..."
+            placeholder="Buscar por nombre o RUT..."
             placeholderTextColor={colors.textDim}
             value={search}
             onChangeText={setSearch}
@@ -151,15 +170,15 @@ export const MensualidadesScreen: React.FC = () => {
             onPress={() => setStatusFilter('PAGADO')}
           >
             <Text style={[styles.statusFilterText, statusFilter === 'PAGADO' && { color: colors.success }]}>
-              ✓ AL DÍA ({paidCount})
+              PAGADO ({paidCount})
             </Text>
           </TouchableOpacity>
           <TouchableOpacity
-            style={[styles.statusFilterBtn, statusFilter === 'PENDIENTE' && styles.statusFilterBtnActiveRed]}
-            onPress={() => setStatusFilter('PENDIENTE')}
+            style={[styles.statusFilterBtn, statusFilter === 'DEUDA' && styles.statusFilterBtnActiveRed]}
+            onPress={() => setStatusFilter('DEUDA')}
           >
-            <Text style={[styles.statusFilterText, statusFilter === 'PENDIENTE' && { color: colors.danger }]}>
-              ⚠ PENDIENTES ({pendingCount})
+            <Text style={[styles.statusFilterText, statusFilter === 'DEUDA' && { color: colors.danger }]}>
+              DEUDA ({pendingCount})
             </Text>
           </TouchableOpacity>
         </View>
@@ -194,7 +213,7 @@ export const MensualidadesScreen: React.FC = () => {
                   </View>
                   <View style={[styles.statusBadge, { backgroundColor: isPaid ? colors.successBg : colors.dangerBg, borderColor: isPaid ? colors.successBorder : colors.dangerBorder }]}>
                     <Text style={[styles.statusBadgeText, { color: isPaid ? colors.success : colors.danger }]}>
-                      {isPaid ? '✓ PAGADO' : '⚠ PENDIENTE'}
+                      {isPaid ? 'PAGADO' : 'DEUDA'}
                     </Text>
                   </View>
                 </View>
@@ -216,7 +235,7 @@ export const MensualidadesScreen: React.FC = () => {
                     activeOpacity={0.8}
                   >
                     <Text style={[styles.togglePayBtnText, isPaid && { color: '#FFFFFF' }]}>
-                      {isPaid ? '✓ PAGADO' : 'REGISTRAR PAGO'}
+                      {isPaid ? 'PAGADO' : 'REGISTRAR PAGO'}
                     </Text>
                   </TouchableOpacity>
 
@@ -225,7 +244,7 @@ export const MensualidadesScreen: React.FC = () => {
                     onPress={() => handleOpenReceipt(s)}
                     activeOpacity={0.8}
                   >
-                    <Text style={styles.receiptActionBtnText}>🧾 RECIBO</Text>
+                    <Text style={styles.receiptActionBtnText}>RECIBO</Text>
                   </TouchableOpacity>
                 </View>
               </View>
@@ -268,7 +287,7 @@ export const MensualidadesScreen: React.FC = () => {
                   activeOpacity={0.8}
                 >
                   <Text style={[styles.togglePayBtnText, isPaid && { color: '#FFFFFF' }]}>
-                    {isPaid ? '✓ PAGADO' : 'MARCAR PAGADO'}
+                    {isPaid ? 'PAGADO' : 'MARCAR PAGADO'}
                   </Text>
                 </TouchableOpacity>
               </View>
@@ -279,7 +298,7 @@ export const MensualidadesScreen: React.FC = () => {
                   onPress={() => handleOpenReceipt(s)}
                   activeOpacity={0.8}
                 >
-                  <Text style={styles.receiptActionBtnText}>🧾 GENERAR RECIBO</Text>
+                  <Text style={styles.receiptActionBtnText}>GENERAR RECIBO</Text>
                 </TouchableOpacity>
               </View>
             </View>
@@ -301,7 +320,6 @@ export const MensualidadesScreen: React.FC = () => {
               {/* Encabezado del Recibo */}
               <View style={styles.receiptHeader}>
                 <View style={styles.receiptBrand}>
-                  <Text style={{ fontSize: 24 }}>🥋</Text>
                   <View>
                     <Text style={styles.receiptBrandTitle}>SHITO RYU KYOKAN GENBUKAI</Text>
                     <Text style={styles.receiptBrandSubtitle}>Rancagua • Región de O'Higgins • Chile</Text>
@@ -355,14 +373,21 @@ export const MensualidadesScreen: React.FC = () => {
                   Este comprobante digital certifica la regularización de la mensualidad deportiva correspondiente a la formación integral de karate do en la escuela activa.
                 </Text>
 
-                <View style={styles.receiptBtnRow}>
+                <View style={[styles.receiptBtnRow, isMobile && { flexDirection: 'column' }]}>
+                  <TouchableOpacity
+                    style={[styles.btnPrint, { backgroundColor: '#166534', borderColor: '#22C55E' }]}
+                    onPress={handleSendWhatsApp}
+                  >
+                    <Text style={[styles.btnPrintText, { color: '#FFFFFF' }]}>ENVIAR POR WHATSAPP</Text>
+                  </TouchableOpacity>
+
                   <TouchableOpacity
                     style={styles.btnPrint}
                     onPress={() => {
                       if (typeof window !== 'undefined') window.print();
                     }}
                   >
-                    <Text style={styles.btnPrintText}>🖨️ IMPRIMIR / PDF</Text>
+                    <Text style={styles.btnPrintText}>GUARDAR PDF</Text>
                   </TouchableOpacity>
 
                   <TouchableOpacity

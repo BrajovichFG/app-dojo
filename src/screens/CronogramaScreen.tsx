@@ -57,12 +57,13 @@ export const CronogramaScreen: React.FC = () => {
 
   // Selección de Grupos Etarios (1 o más)
   const gruposEtarios = [
+    { key: 'sec-all', label: 'Toda la Escuela (Todos los Grupos)', edad: '4 a 99 años' },
     { key: 'sec-1', label: 'Pequeños 4-6 Años (Grupo I)', edad: '4 a 6 años' },
     { key: 'sec-2', label: 'Pequeños 4-6 Años (Grupo II)', edad: '4 a 6 años' },
     { key: 'sec-3', label: 'Adolescentes (7 a 15 años)', edad: '7 a 15 años' },
     { key: 'sec-4', label: 'Jóvenes y Adultos (16+)', edad: '16+ años' },
   ];
-  const [selectedGrupos, setSelectedGrupos] = useState<string[]>(['sec-3']);
+  const [selectedGrupos, setSelectedGrupos] = useState<string[]>(['sec-all']);
 
   // Modo de asignación: 'TODOS_GRUPO' o 'INDIVIDUALES'
   const [assignMode, setAssignMode] = useState<'TODOS_GRUPO' | 'INDIVIDUALES'>('TODOS_GRUPO');
@@ -78,8 +79,10 @@ export const CronogramaScreen: React.FC = () => {
     { key: 'DOMINGO', label: 'Domingo' },
   ];
 
-  // Clases del día seleccionado
-  const dayClasses = schedule.filter((c) => c.dias_semana.includes(selectedDia));
+  // Clases del día seleccionado filtradas estrictamente por la sede activa
+  const dayClasses = schedule.filter(
+    (c) => matchAcademia(c.academia_id, targetAcademiaId) && c.dias_semana.includes(selectedDia)
+  );
   const activeClass = dayClasses.find((c) => c.id === selectedClassId) || dayClasses[0];
 
   // Alumnos asignados a la clase actual
@@ -92,6 +95,11 @@ export const CronogramaScreen: React.FC = () => {
   const attendanceKey = `${activeClass?.id || ''}_${selectedDate}`;
   const currentAttendance = attendance[attendanceKey] || {};
 
+  const handleSelectDia = (d: DiaSemana) => {
+    setSelectedDia(d);
+    setSelectedClassId(''); // Limpiar selección previa para no cruzar clases de otros días
+  };
+
   const handleToggleDayInModal = (d: DiaSemana) => {
     if (newClassDays.includes(d)) {
       if (newClassDays.length > 1) {
@@ -103,19 +111,26 @@ export const CronogramaScreen: React.FC = () => {
   };
 
   const handleToggleGrupoInModal = (gKey: string) => {
-    if (selectedGrupos.includes(gKey)) {
-      if (selectedGrupos.length > 1) {
-        setSelectedGrupos(selectedGrupos.filter((k) => k !== gKey));
+    if (gKey === 'sec-all') {
+      setSelectedGrupos(['sec-all']);
+      return;
+    }
+    const filtered = selectedGrupos.filter((k) => k !== 'sec-all');
+    if (filtered.includes(gKey)) {
+      if (filtered.length > 1) {
+        setSelectedGrupos(filtered.filter((k) => k !== gKey));
+      } else {
+        setSelectedGrupos(['sec-all']);
       }
     } else {
-      setSelectedGrupos([...selectedGrupos, gKey]);
+      setSelectedGrupos([...filtered, gKey]);
     }
   };
 
   // Alumnos disponibles según los grupos etarios elegidos
-  const availableStudentsFromSelectedGroups = schoolStudents.filter((s) =>
-    selectedGrupos.includes(s.seccion_id || '')
-  );
+  const availableStudentsFromSelectedGroups = selectedGrupos.includes('sec-all')
+    ? schoolStudents
+    : schoolStudents.filter((s) => selectedGrupos.includes(s.seccion_id || ''));
 
   const handleCreateClass = () => {
     if (!newClassName.trim()) return;
@@ -232,19 +247,19 @@ export const CronogramaScreen: React.FC = () => {
 
         <View style={[styles.actionButtonsGroup, isMobile && { flexDirection: 'column', width: '100%' }]}>
           <TouchableOpacity
-            style={styles.btnSecondary}
-            onPress={() => setShowWeekTemplateModal(true)}
-            activeOpacity={0.85}
-          >
-            <Text style={styles.btnSecondaryText}>📅 PLANTILLA SEMANAL</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
             style={styles.btnPrimary}
             onPress={() => setShowCreateModal(true)}
             activeOpacity={0.85}
           >
             <Text style={styles.btnPrimaryText}>+ PLANIFICAR CLASE</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.btnSecondary}
+            onPress={() => setShowWeekTemplateModal(true)}
+            activeOpacity={0.85}
+          >
+            <Text style={styles.btnSecondaryText}>PLANTILLA SEMANAL</Text>
           </TouchableOpacity>
 
           {schedule.length > 0 && (
@@ -257,7 +272,7 @@ export const CronogramaScreen: React.FC = () => {
               }}
               activeOpacity={0.85}
             >
-              <Text style={styles.btnClearText}>🗑️ LIMPIAR</Text>
+              <Text style={styles.btnClearText}>LIMPIAR</Text>
             </TouchableOpacity>
           )}
         </View>
@@ -269,7 +284,9 @@ export const CronogramaScreen: React.FC = () => {
           {dias.map((d) => {
             const isSelected = selectedDia === d.key;
             const isCurrentDay = today === d.key;
-            const classCount = schedule.filter((c) => c.dias_semana.includes(d.key)).length;
+            const classCount = schedule.filter(
+              (c) => matchAcademia(c.academia_id, targetAcademiaId) && c.dias_semana.includes(d.key)
+            ).length;
 
             return (
               <TouchableOpacity
@@ -305,7 +322,6 @@ export const CronogramaScreen: React.FC = () => {
       {/* 3. CONTENEDOR PRINCIPAL: CLASES DEL DÍA Y ASISTENCIA EN TATAMI */}
       {dayClasses.length === 0 ? (
         <View style={styles.emptyCard}>
-          <Text style={styles.emptyIcon}>🥋</Text>
           <Text style={styles.emptyTitle}>NO HAY CLASES REGISTRADAS PARA EL DÍA {selectedDia}</Text>
           <Text style={styles.emptySub}>
             Planifica una clase nueva o carga la plantilla semanal recomendada con un clic.
@@ -321,7 +337,7 @@ export const CronogramaScreen: React.FC = () => {
               style={styles.btnSecondary}
               onPress={handleApplyWeekTemplate}
             >
-              <Text style={styles.btnSecondaryText}>📅 CARGAR PLANTILLA RECOMENDADA</Text>
+              <Text style={styles.btnSecondaryText}>CARGAR PLANTILLA RECOMENDADA</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -349,7 +365,7 @@ export const CronogramaScreen: React.FC = () => {
                   >
                     <View style={styles.classItemTop}>
                       <Text style={styles.classTimeText}>
-                        🕒 {cl.hora_inicio} - {cl.hora_fin} hrs
+                        {cl.hora_inicio} - {cl.hora_fin} hrs
                       </Text>
                       <TouchableOpacity
                         onPress={() => {
@@ -368,7 +384,7 @@ export const CronogramaScreen: React.FC = () => {
 
                     <View style={styles.classItemFooter}>
                       <Text style={styles.classAssignedText}>
-                        👥 {assignedCount} {assignedCount === 1 ? 'Alumno asignado' : 'Alumnos asignados'}
+                        {assignedCount} {assignedCount === 1 ? 'Alumno asignado' : 'Alumnos asignados'}
                       </Text>
                       {isSelected && (
                         <View style={styles.activeClassDot}>
@@ -445,7 +461,7 @@ export const CronogramaScreen: React.FC = () => {
                       activeOpacity={0.8}
                     >
                       <Text style={[styles.attendanceToggleText, isPresent && styles.attendanceToggleTextPresent]}>
-                        {isPresent ? '✓ PRESENTE' : 'AUSENTE'}
+                        {isPresent ? 'PRESENTE' : 'AUSENTE'}
                       </Text>
                     </TouchableOpacity>
                   </View>
@@ -575,7 +591,7 @@ export const CronogramaScreen: React.FC = () => {
                       onPress={() => setAssignMode('TODOS_GRUPO')}
                     >
                       <Text style={[styles.assignModeBtnText, assignMode === 'TODOS_GRUPO' && styles.assignModeBtnTextActive]}>
-                        👥 TODOS los alumnos de los grupos seleccionados ({availableStudentsFromSelectedGroups.length})
+                        Todos los alumnos de los grupos seleccionados ({availableStudentsFromSelectedGroups.length})
                       </Text>
                     </TouchableOpacity>
 
@@ -584,7 +600,7 @@ export const CronogramaScreen: React.FC = () => {
                       onPress={() => setAssignMode('INDIVIDUALES')}
                     >
                       <Text style={[styles.assignModeBtnText, assignMode === 'INDIVIDUALES' && styles.assignModeBtnTextActive]}>
-                        🎯 Seleccionar alumnos individuales de estos grupos
+                        Seleccionar alumnos individuales de estos grupos
                       </Text>
                     </TouchableOpacity>
                   </View>
@@ -640,35 +656,130 @@ export const CronogramaScreen: React.FC = () => {
         </Modal>
       )}
 
-      {/* MODAL 2: CARGAR PLANTILLA SEMANAL RECOMENDADA */}
+      {/* MODAL 2: CRONOGRAMA SEMANAL — PLANIFICADOR Y PLANTILLA MAESTRA */}
       {showWeekTemplateModal && (
         <Modal transparent animationType="fade" visible={showWeekTemplateModal}>
           <View style={styles.modalOverlay}>
-            <View style={[styles.modalCard, isMobile && { width: '95%' }]}>
+            <View style={[styles.modalCard, { width: '96%', maxWidth: 1100, maxHeight: '90%' }]}>
               <View style={styles.modalRibbon}>
-                <Text style={styles.modalRibbonText}>PLANTILLA SEMANAL RECOMENDADA — DOJO SHITO RYU</Text>
+                <Text style={styles.modalRibbonText}>CRONOGRAMA SEMANAL — TABLA MAESTRA Y PLANTILLA</Text>
               </View>
 
-              <View style={{ padding: 20 }}>
+              <View style={{ padding: 16, flex: 1 }}>
                 <Text style={styles.templateModalTitle}>
-                  ¿Deseas configurar automáticamente el cronograma estándar del Dojo?
+                  Planificador de Clases de la Semana — {currentAcademia?.nombre || 'Sede Central'}
                 </Text>
                 <Text style={styles.templateModalDesc}>
-                  Esto configurará la semana completa con horarios para Infantiles, Adolescentes, Adultos y Selección WKF.
+                  Visualiza la distribución de horarios por día y hora. Puedes agregar clases individuales o cargar la plantilla completa recomendada:
                 </Text>
 
-                <View style={styles.modalActionsRow}>
+                {/* Tabla de Cronograma Semanal */}
+                <ScrollView horizontal showsHorizontalScrollIndicator={true} style={{ marginTop: 12, flex: 1 }}>
+                  <ScrollView style={{ maxHeight: 420 }}>
+                    <View style={styles.weekTable}>
+                      {/* Fila de Encabezados con Días */}
+                      <View style={styles.weekTableRowHeader}>
+                        <View style={[styles.weekTableTh, { width: 110 }]}>
+                          <Text style={styles.weekTableThText}>BLOQUE HORAS</Text>
+                        </View>
+                        {dias.filter((d) => d.key !== 'DOMINGO').map((d) => (
+                          <View key={d.key} style={[styles.weekTableTh, { width: 155 }]}>
+                            <Text style={styles.weekTableThText}>{d.label.toUpperCase()}</Text>
+                          </View>
+                        ))}
+                      </View>
+
+                      {/* Filas de Horas */}
+                      {[
+                        { start: '08:00', end: '09:00', label: '08:00 - 09:00' },
+                        { start: '10:00', end: '12:00', label: '10:00 - 12:00' },
+                        { start: '16:30', end: '17:30', label: '16:30 - 17:30' },
+                        { start: '17:30', end: '19:00', label: '17:30 - 19:00' },
+                        { start: '19:30', end: '21:00', label: '19:30 - 21:00' },
+                      ].map((slot) => (
+                        <View key={slot.label} style={styles.weekTableRow}>
+                          <View style={[styles.weekTableTdTime, { width: 110 }]}>
+                            <Text style={styles.weekTableTimeText}>{slot.label}</Text>
+                          </View>
+
+                          {dias.filter((d) => d.key !== 'DOMINGO').map((d) => {
+                            const matchingClasses = schedule.filter(
+                              (c) =>
+                                matchAcademia(c.academia_id, targetAcademiaId) &&
+                                c.dias_semana.includes(d.key) &&
+                                c.hora_inicio === slot.start
+                            );
+
+                            return (
+                              <View key={d.key} style={[styles.weekTableTd, { width: 155 }]}>
+                                {matchingClasses.length > 0 ? (
+                                  matchingClasses.map((cl) => {
+                                    const count = schoolStudents.filter((s) =>
+                                      (studentAssignments[s.id] || []).includes(cl.id)
+                                    ).length;
+
+                                    return (
+                                      <View key={cl.id} style={styles.weekClassCell}>
+                                        <Text style={styles.weekClassName} numberOfLines={2}>
+                                          {cl.nombre_clase}
+                                        </Text>
+                                        <Text style={styles.weekClassSub}>
+                                          {count} {count === 1 ? 'Alumno' : 'Alumnos'}
+                                        </Text>
+                                        <TouchableOpacity
+                                          style={styles.weekClassDeleteBtn}
+                                          onPress={() => {
+                                            if (typeof window !== 'undefined' && window.confirm(`¿Eliminar la clase "${cl.nombre_clase}"?`)) {
+                                              deleteHorarioClase(cl.id);
+                                            }
+                                          }}
+                                        >
+                                          <Text style={styles.weekClassDeleteText}>✕ Quitar</Text>
+                                        </TouchableOpacity>
+                                      </View>
+                                    );
+                                  })
+                                ) : (
+                                  <TouchableOpacity
+                                    style={styles.weekEmptySlotBtn}
+                                    onPress={() => {
+                                      setShowWeekTemplateModal(false);
+                                      setNewClassName('');
+                                      setNewClassDays([d.key]);
+                                      setNewStartTime(slot.start);
+                                      setNewEndTime(slot.end);
+                                      setShowCreateModal(true);
+                                    }}
+                                  >
+                                    <Text style={styles.weekEmptySlotText}>+ Asignar</Text>
+                                  </TouchableOpacity>
+                                )}
+                              </View>
+                            );
+                          })}
+                        </View>
+                      ))}
+                    </View>
+                  </ScrollView>
+                </ScrollView>
+
+                {/* Acciones del Modal */}
+                <View style={[styles.modalActionsRow, { marginTop: 16 }]}>
                   <TouchableOpacity
                     style={styles.modalCancelBtn}
                     onPress={() => setShowWeekTemplateModal(false)}
                   >
-                    <Text style={styles.modalCancelBtnText}>CANCELAR</Text>
+                    <Text style={styles.modalCancelBtnText}>CERRAR CRONOGRAMA</Text>
                   </TouchableOpacity>
+
                   <TouchableOpacity
                     style={styles.modalConfirmBtn}
-                    onPress={handleApplyWeekTemplate}
+                    onPress={() => {
+                      handleApplyWeekTemplate();
+                      setShowWeekTemplateModal(false);
+                    }}
                   >
-                    <Text style={styles.modalConfirmBtnText}>APLICAR PLANTILLA SEMANAL</Text>
+                    <Text style={styles.modalConfirmBtnText}>CARGAR PLANTILLA SEMANAL RECOMENDADA</Text>
                   </TouchableOpacity>
                 </View>
               </View>
@@ -1101,7 +1212,7 @@ const styles = StyleSheet.create({
   groupCheckSquare: {
     width: 20,
     height: 20,
-    borderRadius: 4,
+    borderRadius: 0,
     borderWidth: 1,
     borderColor: colors.borderLight,
     alignItems: 'center',
@@ -1209,5 +1320,93 @@ const styles = StyleSheet.create({
     fontSize: 12,
     marginTop: 6,
     lineHeight: 18,
+  },
+  weekTable: {
+    borderWidth: 1,
+    borderColor: colors.borderLight,
+    backgroundColor: colors.bgCard,
+  },
+  weekTableRowHeader: {
+    flexDirection: 'row',
+    backgroundColor: colors.bgSurface,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.borderLight,
+  },
+  weekTableTh: {
+    padding: 10,
+    borderRightWidth: 1,
+    borderRightColor: colors.borderSubtle,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  weekTableThText: {
+    color: colors.primary,
+    fontSize: 11,
+    fontWeight: '900',
+    letterSpacing: 0.5,
+  },
+  weekTableRow: {
+    flexDirection: 'row',
+    borderBottomWidth: 1,
+    borderBottomColor: colors.borderSubtle,
+  },
+  weekTableTdTime: {
+    padding: 8,
+    backgroundColor: colors.bgDarkest,
+    borderRightWidth: 1,
+    borderRightColor: colors.borderSubtle,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  weekTableTimeText: {
+    color: colors.textMuted,
+    fontSize: 10,
+    fontWeight: '800',
+  },
+  weekTableTd: {
+    padding: 6,
+    borderRightWidth: 1,
+    borderRightColor: colors.borderSubtle,
+    justifyContent: 'center',
+    minHeight: 65,
+  },
+  weekClassCell: {
+    backgroundColor: 'rgba(255, 107, 0, 0.12)',
+    borderWidth: 1,
+    borderColor: colors.primary,
+    padding: 6,
+    gap: 2,
+  },
+  weekClassName: {
+    color: colors.textPrimary,
+    fontSize: 11,
+    fontWeight: '800',
+  },
+  weekClassSub: {
+    color: colors.primary,
+    fontSize: 10,
+    fontWeight: '700',
+  },
+  weekClassDeleteBtn: {
+    alignSelf: 'flex-end',
+    marginTop: 2,
+  },
+  weekClassDeleteText: {
+    color: colors.danger,
+    fontSize: 9,
+    fontWeight: '800',
+  },
+  weekEmptySlotBtn: {
+    borderWidth: 1,
+    borderColor: colors.borderSubtle,
+    borderStyle: 'dashed',
+    paddingVertical: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  weekEmptySlotText: {
+    color: colors.textDim,
+    fontSize: 10,
+    fontWeight: '700',
   },
 });

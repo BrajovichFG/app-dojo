@@ -57,12 +57,12 @@ export const colors = {
 };
 
 export const radii = {
-  xs: 4,
-  sm: 6,
-  md: 8,
-  lg: 12,
-  xl: 16,
-  full: 9999,
+  xs: 0,
+  sm: 0,
+  md: 0,
+  lg: 0,
+  xl: 0,
+  full: 0,
 };
 
 export const shadows = {

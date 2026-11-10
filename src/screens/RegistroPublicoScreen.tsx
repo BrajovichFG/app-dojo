@@ -8,9 +8,16 @@ import { colors, radii, useResponsive } from '../theme/theme';
 export const RegistroPublicoScreen: React.FC = () => {
   const addStudent = useDojoStore((state) => state.addStudent);
   const setTab = useDojoStore((state) => state.setTab);
+  const academias = useDojoStore((state) => state.academias);
   const currentAcademia = useDojoStore((state) => state.currentAcademia);
 
   const { isMobile } = useResponsive();
+
+  // Selector desplegable compacto de Academia / Sede
+  const [selectedAcademiaId, setSelectedAcademiaId] = useState<string>(
+    currentAcademia?.id || academias[0]?.id || ''
+  );
+  const [showAcademiaDropdown, setShowAcademiaDropdown] = useState(false);
 
   // Formulario Alumno
   const [nombres, setNombres] = useState('');
@@ -37,6 +44,31 @@ export const RegistroPublicoScreen: React.FC = () => {
   const [submitted, setSubmitted] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
 
+  // Formateador de Fecha DD-MM-YYYY
+  const handleDobChange = (text: string) => {
+    const cleaned = text.replace(/[^0-9]/g, '').slice(0, 8);
+    if (cleaned.length <= 2) {
+      setDob(cleaned);
+    } else if (cleaned.length <= 4) {
+      setDob(`${cleaned.slice(0, 2)}-${cleaned.slice(2)}`);
+    } else {
+      setDob(`${cleaned.slice(0, 2)}-${cleaned.slice(2, 4)}-${cleaned.slice(4)}`);
+    }
+  };
+
+  // Normaliza fecha DD-MM-YYYY a YYYY-MM-DD para almacenamiento estándar
+  const normalizarFecha = (f: string) => {
+    if (!f) return '';
+    const clean = f.trim();
+    if (clean.includes('-')) {
+      const parts = clean.split('-');
+      if (parts[0]?.length === 2 && parts[2]?.length === 4) {
+        return `${parts[2]}-${parts[1]}-${parts[0]}`;
+      }
+    }
+    return clean;
+  };
+
   const handleSubmit = () => {
     if (!nombres.trim() || !apellidos.trim()) {
       setErrorMessage('Por favor ingresa los nombres y apellidos del alumno.');
@@ -50,15 +82,16 @@ export const RegistroPublicoScreen: React.FC = () => {
 
     setErrorMessage('');
     const pesoNum = peso ? parseFloat(peso.replace(',', '.')) : undefined;
+    const fechaNorm = normalizarFecha(dob);
 
     addStudent({
-      academia_id: currentAcademia?.id || CENTRAL_ACADEMIA_ID,
+      academia_id: selectedAcademiaId ? selectedAcademiaId : undefined,
       seccion_id: 'sec-3', // Por defecto adolescentes, el sensei confirmará
       cinturon_id: cinturonId,
       nombres: nombres.trim(),
       apellidos: apellidos.trim(),
       rut: rut.trim() || undefined,
-      fecha_nacimiento: dob.trim() || undefined,
+      fecha_nacimiento: fechaNorm || undefined,
       genero,
       peso_actual_kg: isNaN(pesoNum as any) ? undefined : pesoNum,
       direccion: direccion.trim() || undefined,
@@ -74,13 +107,14 @@ export const RegistroPublicoScreen: React.FC = () => {
     setSubmitted(true);
   };
 
-  const edadDescriptiva = dob ? calcularEdadDescriptiva(dob) : null;
+  const fechaParaCalculo = normalizarFecha(dob);
+  const edadDescriptiva = fechaParaCalculo ? calcularEdadDescriptiva(fechaParaCalculo) : null;
+  const currentSelectedAcademia = academias.find((a) => a.id === selectedAcademiaId);
 
   if (submitted) {
     return (
       <View style={styles.successContainer}>
         <View style={styles.successCard}>
-          <Text style={styles.successIcon}>🥋</Text>
           <Text style={styles.successTitle}>¡INSCRIPCIÓN REGISTRADA CON ÉXITO!</Text>
           <Text style={styles.successDesc}>
             Bienvenido a {currentAcademia?.nombre || 'Dojo Shito Ryu'}. Los datos de{' '}
@@ -106,20 +140,69 @@ export const RegistroPublicoScreen: React.FC = () => {
           <Text style={styles.formRibbonTopText}>PORTAL OFICIAL DE MATRÍCULA ONLINE — SHITO RYU KYOKAN GENBUKAI</Text>
         </View>
 
-        {/* Encabezado */}
+        {/* Encabezado con Selector Desplegable Corto de Academia / Sede */}
         <View style={styles.formHeader}>
           <Text style={styles.formTitle}>FICHA DE POSTULACIÓN E INSCRIPCIÓN DEPORTIVA</Text>
           <Text style={styles.formDesc}>
-            Completa los antecedentes del deportista para registrarlo en la academia{' '}
-            <Text style={{ color: colors.primary, fontWeight: '800' }}>
-              {currentAcademia?.nombre || 'Dojo Central Rancagua'}
-            </Text>.
+            Completa los antecedentes del deportista para registrar su ingreso oficial al dojo.
           </Text>
+
+          {/* Menú desplegable corto hacia abajo para elegir Academia y Sede */}
+          <View style={styles.schoolSelectorBox}>
+            <Text style={styles.schoolSelectorLabel}>SEDE / ACADEMIA EN LA QUE SE INSCRIBE:</Text>
+            <TouchableOpacity
+              style={styles.schoolDropdownTrigger}
+              onPress={() => setShowAcademiaDropdown(!showAcademiaDropdown)}
+              activeOpacity={0.85}
+            >
+              <Text style={styles.schoolDropdownTriggerText}>
+                {currentSelectedAcademia
+                  ? `📍 ${currentSelectedAcademia.nombre} (${currentSelectedAcademia.direccion || 'Sede oficial'})`
+                  : '⚠️ Sin sede definida (El Sensei la asignará en Configuraciones)'}
+              </Text>
+              <Text style={styles.schoolDropdownArrow}>{showAcademiaDropdown ? '▲' : '▼'}</Text>
+            </TouchableOpacity>
+
+            {showAcademiaDropdown && (
+              <View style={styles.schoolDropdownMenu}>
+                {academias.map((ac) => {
+                  const isCur = selectedAcademiaId === ac.id;
+                  return (
+                    <TouchableOpacity
+                      key={ac.id}
+                      style={[styles.schoolDropdownItem, isCur && styles.schoolDropdownItemActive]}
+                      onPress={() => {
+                        setSelectedAcademiaId(ac.id);
+                        setShowAcademiaDropdown(false);
+                      }}
+                    >
+                      <Text style={[styles.schoolDropdownItemText, isCur && styles.schoolDropdownItemTextActive]}>
+                        📍 {ac.nombre} — {ac.direccion || 'Sede oficial'}
+                      </Text>
+                      {isCur && <Text style={{ color: colors.primary, fontWeight: '900' }}>✓</Text>}
+                    </TouchableOpacity>
+                  );
+                })}
+                <TouchableOpacity
+                  style={[styles.schoolDropdownItem, selectedAcademiaId === '' && styles.schoolDropdownItemActive]}
+                  onPress={() => {
+                    setSelectedAcademiaId('');
+                    setShowAcademiaDropdown(false);
+                  }}
+                >
+                  <Text style={[styles.schoolDropdownItemText, { color: colors.accent }]}>
+                    ⚠️ Sin sede asignada (Asignar en Configuraciones)
+                  </Text>
+                  {selectedAcademiaId === '' && <Text style={{ color: colors.accent, fontWeight: '900' }}>✓</Text>}
+                </TouchableOpacity>
+              </View>
+            )}
+          </View>
         </View>
 
         {errorMessage ? (
           <View style={styles.errorBanner}>
-            <Text style={styles.errorBannerText}>⚠ {errorMessage}</Text>
+            <Text style={styles.errorBannerText}>{errorMessage}</Text>
           </View>
         ) : null}
 
@@ -153,7 +236,7 @@ export const RegistroPublicoScreen: React.FC = () => {
 
           <View style={[styles.row, isMobile && { flexDirection: 'column' }]}>
             <View style={[styles.inputBox, { flex: 1 }]}>
-              <Text style={styles.label}>RUT Chileno</Text>
+              <Text style={styles.label}>RUT</Text>
               <TextInput
                 style={styles.input}
                 placeholder="Ej: 21.613.369-2"
@@ -164,21 +247,22 @@ export const RegistroPublicoScreen: React.FC = () => {
             </View>
 
             <View style={[styles.inputBox, { flex: 1 }]}>
-              <Text style={styles.label}>Fecha de Nacimiento (AAAA-MM-DD) *</Text>
+              <Text style={styles.label}>Fecha de Nacimiento (DD-MM-YYYY) *</Text>
               <TextInput
                 style={styles.input}
-                placeholder="2012-05-18"
+                placeholder="18-05-2012"
                 placeholderTextColor={colors.textDim}
                 value={dob}
-                onChangeText={setDob}
+                onChangeText={handleDobChange}
+                keyboardType="numeric"
               />
-              {edadDescriptiva && <Text style={styles.calcAgeText}>🎂 {edadDescriptiva}</Text>}
+              {edadDescriptiva && <Text style={styles.calcAgeText}>{edadDescriptiva}</Text>}
             </View>
           </View>
 
           <View style={[styles.row, isMobile && { flexDirection: 'column' }]}>
             <View style={[styles.inputBox, { flex: 1 }]}>
-              <Text style={styles.label}>Género para Torneos WKF</Text>
+              <Text style={styles.label}>Genero</Text>
               <View style={styles.genderRow}>
                 <TouchableOpacity
                   style={[styles.genderBtn, genero === 'M' && styles.genderBtnActive]}
@@ -249,7 +333,7 @@ export const RegistroPublicoScreen: React.FC = () => {
             </View>
 
             <View style={[styles.inputBox, { flex: 1 }]}>
-              <Text style={styles.label}>Talla Pantalón / Karategui</Text>
+              <Text style={styles.label}>Talla Pantalon</Text>
               <TextInput
                 style={styles.input}
                 placeholder="Talla 1, 2, 3, 4, 5"
@@ -264,7 +348,7 @@ export const RegistroPublicoScreen: React.FC = () => {
           <View style={styles.beltSelectorBox}>
             <Text style={styles.label}>Grado / Cinturón de Ingreso</Text>
             <Text style={styles.beltSelectorHint}>
-              Si es alumno nuevo principiante seleccione "Blanco (10° Kyu)". Si ya entrenó Karate en otro Dojo o posee grado previo, seleccione su cinturón actual para tramitar la convalidación oficial:
+              Si es alumno nuevo principiante seleccione "Blanco (10° Kyu - Jukyu)". Si ya entrenó Karate en otro Dojo o posee grado previo, seleccione su cinturón actual para tramitar la convalidación oficial:
             </Text>
 
             <View style={styles.beltsGrid}>
@@ -339,7 +423,7 @@ export const RegistroPublicoScreen: React.FC = () => {
             </View>
 
             <View style={[styles.inputBox, { flex: 1 }]}>
-              <Text style={styles.label}>RUT Apoderado (Para Boleta SII)</Text>
+              <Text style={styles.label}>Rut Apoderado</Text>
               <TextInput
                 style={styles.input}
                 placeholder="Ej: 15.342.128-4"
@@ -452,6 +536,69 @@ const styles = StyleSheet.create({
     color: colors.textMuted,
     fontSize: 12,
     lineHeight: 18,
+  },
+  schoolSelectorBox: {
+    marginTop: 10,
+    backgroundColor: colors.bgDark,
+    borderWidth: 1,
+    borderColor: colors.borderLight,
+    padding: 12,
+  },
+  schoolSelectorLabel: {
+    color: colors.accent,
+    fontSize: 10,
+    fontWeight: '900',
+    letterSpacing: 0.8,
+    marginBottom: 6,
+  },
+  schoolDropdownTrigger: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    backgroundColor: colors.bgCard,
+    borderWidth: 1,
+    borderColor: colors.borderLight,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+  },
+  schoolDropdownTriggerText: {
+    color: colors.textPrimary,
+    fontSize: 13,
+    fontWeight: '800',
+    flex: 1,
+  },
+  schoolDropdownArrow: {
+    color: colors.primary,
+    fontSize: 11,
+    fontWeight: '900',
+    marginLeft: 8,
+  },
+  schoolDropdownMenu: {
+    marginTop: 6,
+    borderWidth: 1,
+    borderColor: colors.primary,
+    backgroundColor: colors.bgCard,
+  },
+  schoolDropdownItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.borderSubtle,
+  },
+  schoolDropdownItemActive: {
+    backgroundColor: 'rgba(255, 107, 0, 0.12)',
+  },
+  schoolDropdownItemText: {
+    color: colors.textSecondary,
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  schoolDropdownItemTextActive: {
+    color: colors.primary,
+    fontWeight: '900',
   },
   errorBanner: {
     backgroundColor: colors.dangerBg,
@@ -636,7 +783,7 @@ const styles = StyleSheet.create({
   beltColorIndicator: {
     width: 12,
     height: 12,
-    borderRadius: 6,
+    borderRadius: 0,
   },
   beltOptionName: {
     color: colors.textSecondary,

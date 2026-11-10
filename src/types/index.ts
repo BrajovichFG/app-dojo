@@ -42,7 +42,7 @@ export interface GradoCinturon {
 
 export interface Alumno {
   id: string;
-  academia_id: string;
+  academia_id?: string;
   seccion_id?: string;
   cinturon_id: number;
   nombres: string;

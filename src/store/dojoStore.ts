@@ -263,8 +263,8 @@ export const useDojoStore = create<DojoState>()(
       },
 
       users: USUARIOS_DISPONIBLES,
-      currentUser: USUARIOS_DISPONIBLES[0],
-      currentAcademia: ACADEMIAS_DISPONIBLES[0],
+      currentUser: null,
+      currentAcademia: null,
 
       loginAsUser: (userId, academiaId) => {
         const user = get().users.find((u) => u.id === userId) || get().users[0];
@@ -779,8 +779,17 @@ export const useDojoStore = create<DojoState>()(
       },
     }),
     {
-      name: 'dojo_shito_ryu_storage_v4',
+      name: 'dojo_shito_ryu_storage_v5',
       storage: webStorage,
+      migrate: (persistedState: any) => {
+        if (persistedState) {
+          persistedState.users = USUARIOS_DISPONIBLES;
+          if (!persistedState.currentUser || persistedState.currentUser.id !== 'usr-1') {
+            persistedState.currentUser = USUARIOS_DISPONIBLES[0];
+          }
+        }
+        return persistedState;
+      },
     }
   )
 );

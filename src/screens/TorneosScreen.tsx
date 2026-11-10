@@ -151,7 +151,7 @@ export const TorneosScreen: React.FC = () => {
           activeOpacity={0.85}
         >
           <Text style={[styles.moduleTabText, subModule === 'EVENTOS' && styles.moduleTabTextActive]}>
-            🏆 EVENTOS Y TORNEOS ({eventos.length})
+            EVENTOS Y TORNEOS ({eventos.length})
           </Text>
         </TouchableOpacity>
 
@@ -164,7 +164,7 @@ export const TorneosScreen: React.FC = () => {
           activeOpacity={0.85}
         >
           <Text style={[styles.moduleTabText, subModule === 'EXAMENES' && styles.moduleTabTextActive]}>
-            🥋 EXÁMENES DE GRADO ({examenes.length})
+            EXÁMENES DE GRADO ({examenes.length})
           </Text>
         </TouchableOpacity>
       </View>
@@ -226,12 +226,12 @@ export const TorneosScreen: React.FC = () => {
                         >
                           <Text style={styles.typeTagText}>{eve.tipo}</Text>
                         </View>
-                        <Text style={styles.eventItemDate}>📅 {eve.fecha_evento}</Text>
+                        <Text style={styles.eventItemDate}>{eve.fecha_evento}</Text>
                       </View>
 
                       <Text style={styles.eventItemTitle}>{eve.nombre}</Text>
                       <Text style={styles.eventItemMeta}>
-                        📍 {eve.lugar || 'Sede Central'} • 👥 {eve.alumnos_inscritos_ids?.length || 0} Alumnos
+                        {eve.lugar || 'Sede Central'} • {eve.alumnos_inscritos_ids?.length || 0} Alumnos
                       </Text>
                     </TouchableOpacity>
                   );
@@ -268,31 +268,26 @@ export const TorneosScreen: React.FC = () => {
                     </View>
                     <Text style={styles.detailTitle}>{selectedEvento.nombre}</Text>
                     <Text style={styles.detailMetaLine}>
-                      📅 Fecha: {selectedEvento.fecha_evento} a las {selectedEvento.hora_evento || '09:00'} hrs • 📍 {selectedEvento.lugar}
+                      Fecha: {selectedEvento.fecha_evento} a las {selectedEvento.hora_evento || '09:00'} hrs • {selectedEvento.lugar}
                     </Text>
                     <Text style={styles.detailFee}>
                       Costo de Inscripción: ${selectedEvento.costo_inscripcion.toLocaleString('es-CL')} CLP
                     </Text>
                   </View>
 
-                  <View style={{ gap: 8, alignItems: isMobile ? 'stretch' : 'flex-end', width: isMobile ? '100%' : 'auto', marginTop: isMobile ? 12 : 0 }}>
+                  <View style={[styles.detailActionsRow, isMobile && { flexDirection: 'column', width: '100%', marginTop: 12 }]}>
                     {/* Botón de Exportar Plantilla Oficial */}
                     <TouchableOpacity
-                      style={styles.exportTemplateBtn}
+                      style={styles.actionBtnHorizontal}
                       onPress={() => setShowExportModal(true)}
                       activeOpacity={0.85}
                     >
-                      <Text style={styles.exportTemplateBtnText}>📄 EXPORTAR NÓMINA OFICIAL</Text>
-                      <Text style={styles.exportTemplateBtnSub}>
-                        {selectedEvento.tipo === 'SEMINARIO'
-                          ? 'Lista para acreditación (Sin categoría)'
-                          : 'Lista para mesa de pesaje oficial'}
-                      </Text>
+                      <Text style={styles.actionBtnHorizontalText}>EXPORTAR NÓMINA OFICIAL</Text>
                     </TouchableOpacity>
 
                     {/* Botón Eliminar Evento */}
                     <TouchableOpacity
-                      style={styles.deleteResourceBtn}
+                      style={[styles.actionBtnHorizontal, styles.actionBtnHorizontalDanger]}
                       onPress={() => {
                         if (confirm(`¿Estás seguro de eliminar el evento "${selectedEvento.nombre}"?`)) {
                           deleteEvento(selectedEvento.id);
@@ -301,7 +296,7 @@ export const TorneosScreen: React.FC = () => {
                       }}
                       activeOpacity={0.85}
                     >
-                      <Text style={styles.deleteResourceBtnText}>🗑️ ELIMINAR EVENTO</Text>
+                      <Text style={[styles.actionBtnHorizontalText, { color: colors.danger }]}>ELIMINAR EVENTO</Text>
                     </TouchableOpacity>
                   </View>
                 </View>
@@ -404,7 +399,7 @@ export const TorneosScreen: React.FC = () => {
                               </Text>
                               {selectedEvento.tipo !== 'SEMINARIO' && (
                                 <Text style={styles.mobileEnrolledCat}>
-                                  🥋 {s.categoria_kumite_manual || s.categoria_kumite || 'Categoría por asignar'}
+                                  {s.categoria_kumite_manual || s.categoria_kumite || 'Categoría por asignar'}
                                 </Text>
                               )}
                             </View>
@@ -464,7 +459,7 @@ export const TorneosScreen: React.FC = () => {
                         <View style={[styles.typeTag, { backgroundColor: colors.accent }]}>
                           <Text style={styles.typeTagText}>EXAMEN DE GRADO</Text>
                         </View>
-                        <Text style={styles.eventItemDate}>📅 {ex.fecha_examen}</Text>
+                        <Text style={styles.eventItemDate}>{ex.fecha_examen}</Text>
                       </View>
 
                       <Text style={styles.eventItemTitle}>{ex.nombre}</Text>
@@ -506,22 +501,21 @@ export const TorneosScreen: React.FC = () => {
                     </View>
                     <Text style={styles.detailTitle}>{selectedExamen.nombre}</Text>
                     <Text style={styles.detailMetaLine}>
-                      📅 Fecha: {selectedExamen.fecha_examen} • 💰 Derecho de Examen: ${selectedExamen.costo_derecho_examen.toLocaleString('es-CL')} CLP
+                      Fecha: {selectedExamen.fecha_examen} • Derecho de Examen: ${selectedExamen.costo_derecho_examen.toLocaleString('es-CL')} CLP
                     </Text>
                   </View>
 
-                  <View style={{ gap: 8, alignItems: isMobile ? 'stretch' : 'flex-end', width: isMobile ? '100%' : 'auto', marginTop: isMobile ? 12 : 0 }}>
+                  <View style={[styles.detailActionsRow, isMobile && { flexDirection: 'column', width: '100%', marginTop: 12 }]}>
                     <TouchableOpacity
-                      style={styles.finalizeExamBtn}
+                      style={[styles.actionBtnHorizontal, styles.actionBtnHorizontalSuccess]}
                       onPress={handleFinalizeAscensos}
                       activeOpacity={0.85}
                     >
-                      <Text style={styles.finalizeExamBtnText}>✓ CONFIRMAR Y FINALIZAR ASCENSOS</Text>
-                      <Text style={styles.finalizeExamBtnSub}>Actualiza el cinturón a los PROMOVIDOS</Text>
+                      <Text style={[styles.actionBtnHorizontalText, { color: colors.success }]}>CONFIRMAR ASCENSOS</Text>
                     </TouchableOpacity>
 
                     <TouchableOpacity
-                      style={styles.deleteResourceBtn}
+                      style={[styles.actionBtnHorizontal, styles.actionBtnHorizontalDanger]}
                       onPress={() => {
                         if (confirm(`¿Estás seguro de eliminar la toma de exámenes "${selectedExamen.nombre}"?`)) {
                           deleteExamen(selectedExamen.id);
@@ -530,7 +524,7 @@ export const TorneosScreen: React.FC = () => {
                       }}
                       activeOpacity={0.85}
                     >
-                      <Text style={styles.deleteResourceBtnText}>🗑️ ELIMINAR EXAMEN</Text>
+                      <Text style={[styles.actionBtnHorizontalText, { color: colors.danger }]}>ELIMINAR EXAMEN</Text>
                     </TouchableOpacity>
                   </View>
                 </View>
@@ -584,7 +578,7 @@ export const TorneosScreen: React.FC = () => {
 
                             <View style={[styles.badgePillSharp, !isUpToDate && { backgroundColor: 'rgba(239, 68, 68, 0.15)', borderColor: colors.danger }]}>
                               <Text style={[styles.badgePillSharpText, !isUpToDate && { color: colors.danger }]}>
-                                {isUpToDate ? '✓ CUOTA AL DÍA' : '⚠ PENDIENTE PAGO'}
+                                {isUpToDate ? 'CUOTA AL DÍA' : 'PENDIENTE PAGO'}
                               </Text>
                             </View>
                           </View>
@@ -601,7 +595,7 @@ export const TorneosScreen: React.FC = () => {
                                 onPress={() => updateCandidateResult(cand.id, 'PROMOVIDO')}
                               >
                                 <Text style={[styles.evalChoiceText, cand.resultado === 'PROMOVIDO' && styles.evalChoiceTextActive]}>
-                                  🏆 PROMOVIDO
+                                  PROMOVIDO
                                 </Text>
                               </TouchableOpacity>
 
@@ -613,7 +607,7 @@ export const TorneosScreen: React.FC = () => {
                                 onPress={() => updateCandidateResult(cand.id, 'PROLONGADO')}
                               >
                                 <Text style={[styles.evalChoiceText, cand.resultado === 'PROLONGADO' && styles.evalChoiceTextActive]}>
-                                  ⏳ PROLONGADO
+                                  PROLONGADO
                                 </Text>
                               </TouchableOpacity>
 
@@ -625,7 +619,7 @@ export const TorneosScreen: React.FC = () => {
                                 onPress={() => updateCandidateResult(cand.id, 'DENEGADO')}
                               >
                                 <Text style={[styles.evalChoiceText, cand.resultado === 'DENEGADO' && styles.evalChoiceTextActive]}>
-                                  ✕ DENEGADO
+                                  DENEGADO
                                 </Text>
                               </TouchableOpacity>
                             </View>
@@ -693,51 +687,73 @@ export const TorneosScreen: React.FC = () => {
                   <TouchableOpacity
                     style={styles.quickActionBtn}
                     onPress={() => {
-                      const groupIds = schoolStudents
-                        .filter((s) => selectedGruposEvento.includes(s.seccion_id || ''))
+                      const groupEligibleIds = schoolStudents
+                        .filter((s) => selectedGruposEvento.includes(s.seccion_id || '') && isStudentUpToDate(s.id))
                         .map((s) => s.id);
-                      assignStudentsToEvento(selectedEvento.id, groupIds);
+                      assignStudentsToEvento(selectedEvento.id, groupEligibleIds);
                     }}
                   >
-                    <Text style={styles.quickActionBtnText}>✓ Marcar Todos los de Estos Grupos</Text>
+                    <Text style={styles.quickActionBtnText}>Marcar Al Día de Estos Grupos</Text>
                   </TouchableOpacity>
                 </View>
 
                 {/* Lista Completa de Alumnos con su estado de mensualidad */}
                 <Text style={styles.modalLabel}>
-                  Nómina Completa de Alumnos ({schoolStudents.length} Registrados):
+                  Nómina de Alumnos ({schoolStudents.length} Registrados — Requiere Mensualidad al Día):
                 </Text>
-                <ScrollView style={{ maxHeight: 260, marginTop: 4 }}>
+                <ScrollView style={{ maxHeight: 280, marginTop: 4 }}>
                   <View style={{ gap: 6 }}>
                     {schoolStudents
                       .filter((s) => selectedGruposEvento.length === 0 || selectedGruposEvento.includes(s.seccion_id || ''))
                       .map((s) => {
                         const isEnrolled = selectedEvento.alumnos_inscritos_ids.includes(s.id);
                         const isUpToDate = isStudentUpToDate(s.id);
+                        const cinturon = GRADOS_CINTURON.find((g) => g.id === s.cinturon_id) || GRADOS_CINTURON[0];
 
                         return (
                           <TouchableOpacity
                             key={s.id}
+                            disabled={!isUpToDate && !isEnrolled}
                             style={[
                               styles.eligibleStudentRow,
                               isEnrolled && styles.eligibleStudentRowChecked,
+                              !isUpToDate && !isEnrolled && { opacity: 0.5, borderColor: 'rgba(239, 68, 68, 0.3)' },
                             ]}
                             onPress={() => {
                               if (isEnrolled) {
                                 removeStudentFromEvento(selectedEvento.id, s.id);
-                              } else {
+                              } else if (isUpToDate) {
                                 assignStudentsToEvento(selectedEvento.id, [s.id]);
                               }
                             }}
                           >
-                            <Text style={styles.eligibleStudentName}>
-                              {isEnrolled ? '✓ ' : '○ '} {s.nombres} {s.apellidos}
-                            </Text>
+                            <View style={{ flex: 1 }}>
+                              <Text style={[styles.eligibleStudentName, !isUpToDate && !isEnrolled && { color: colors.textSecondary }]}>
+                                {isEnrolled ? '✓ ' : '○ '} {s.nombres} {s.apellidos}
+                              </Text>
+                              <Text style={{ color: colors.textSecondary, fontSize: 11, marginTop: 1 }}>
+                                {cinturon.nombre}
+                              </Text>
+                            </View>
 
                             <View style={{ flexDirection: 'row', gap: 6, alignItems: 'center' }}>
-                              <Text style={[styles.eligibleStatusTag, { color: isUpToDate ? colors.success : colors.accent }]}>
-                                {isUpToDate ? '✓ Al Día' : '⚠ Deuda'}
-                              </Text>
+                              <View
+                                style={[
+                                  styles.badgePillSharp,
+                                  isUpToDate
+                                    ? { backgroundColor: 'rgba(16, 185, 129, 0.15)', borderColor: colors.success }
+                                    : { backgroundColor: 'rgba(239, 68, 68, 0.15)', borderColor: colors.danger },
+                                ]}
+                              >
+                                <Text
+                                  style={[
+                                    styles.badgePillSharpText,
+                                    { color: isUpToDate ? colors.success : colors.danger },
+                                  ]}
+                                >
+                                  {isUpToDate ? 'PAGADO (ELEGIBLE)' : 'DEUDA (NO ELEGIBLE)'}
+                                </Text>
+                              </View>
                             </View>
                           </TouchableOpacity>
                         );
@@ -750,7 +766,7 @@ export const TorneosScreen: React.FC = () => {
                     style={styles.confirmSquareBtn}
                     onPress={() => setShowAssignStudentsModal(false)}
                   >
-                    <Text style={styles.confirmSquareBtnText}>✓ GUARDAR NÓMINA DE ATLETAS</Text>
+                    <Text style={styles.confirmSquareBtnText}>GUARDAR NÓMINA DE ATLETAS</Text>
                   </TouchableOpacity>
                 </View>
               </View>
@@ -772,7 +788,7 @@ export const TorneosScreen: React.FC = () => {
 
               <View style={styles.modalBody}>
                 <Text style={styles.modalLabel}>
-                  Selecciona alumnos a incorporar al acta de evaluación ({schoolStudents.length} registrados):
+                  Selecciona alumnos a incorporar al examen ({schoolStudents.length} registrados — Requiere Mensualidad al Día):
                 </Text>
 
                 <ScrollView style={{ maxHeight: 300, marginTop: 8 }}>
@@ -787,18 +803,20 @@ export const TorneosScreen: React.FC = () => {
                       return (
                         <TouchableOpacity
                           key={s.id}
+                          disabled={!isUpToDate && !isCandidate}
                           style={[
                             styles.eligibleStudentRow,
                             isCandidate && styles.eligibleStudentRowChecked,
+                            !isUpToDate && !isCandidate && { opacity: 0.5, borderColor: 'rgba(239, 68, 68, 0.3)' },
                           ]}
                           onPress={() => {
-                            if (!isCandidate) {
+                            if (!isCandidate && isUpToDate) {
                               addExamCandidates(selectedExamen.id, [s.id]);
                             }
                           }}
                         >
                           <View style={{ flex: 1 }}>
-                            <Text style={styles.eligibleStudentName}>
+                            <Text style={[styles.eligibleStudentName, !isUpToDate && !isCandidate && { color: colors.textSecondary }]}>
                               {isCandidate ? '✓ ' : '○ '} {s.nombres} {s.apellidos}
                             </Text>
                             <Text style={{ color: colors.textSecondary, fontSize: 11, marginTop: 2 }}>
@@ -806,9 +824,23 @@ export const TorneosScreen: React.FC = () => {
                             </Text>
                           </View>
 
-                          <Text style={[styles.eligibleStatusTag, { color: isUpToDate ? colors.success : colors.accent }]}>
-                            {isUpToDate ? '✓ Al Día' : '⚠ Deuda'}
-                          </Text>
+                          <View
+                            style={[
+                              styles.badgePillSharp,
+                              isUpToDate
+                                ? { backgroundColor: 'rgba(16, 185, 129, 0.15)', borderColor: colors.success }
+                                : { backgroundColor: 'rgba(239, 68, 68, 0.15)', borderColor: colors.danger },
+                            ]}
+                          >
+                            <Text
+                              style={[
+                                styles.badgePillSharpText,
+                                { color: isUpToDate ? colors.success : colors.danger },
+                              ]}
+                            >
+                              {isUpToDate ? 'PAGADO (ELEGIBLE)' : 'DEUDA (NO ELEGIBLE)'}
+                            </Text>
+                          </View>
                         </TouchableOpacity>
                       );
                     })}
@@ -1048,14 +1080,29 @@ export const TorneosScreen: React.FC = () => {
                 <Text style={styles.exportNotice}>
                   {selectedEvento.tipo === 'SEMINARIO'
                     ? '✓ Seminario técnico: Categorías omitidas por reglamento.'
-                    : '✓ Torneo / Competencia: Lista con peso y categorías para mesa oficial.'}
+                    : '✓ Torneo / Competencia: Nómina oficial con peso y categorías para mesa de acreditación.'}
                 </Text>
-                <TouchableOpacity
-                  style={styles.closeExportBtn}
-                  onPress={() => setShowExportModal(false)}
-                >
-                  <Text style={styles.closeExportBtnText}>CERRAR VISTA PREVIA ✕</Text>
-                </TouchableOpacity>
+                <View style={{ flexDirection: 'row', gap: 10, flexWrap: 'wrap' }}>
+                  <TouchableOpacity
+                    style={[styles.closeExportBtn, { backgroundColor: colors.accent }]}
+                    onPress={() => {
+                      if (typeof window !== 'undefined' && window.print) {
+                        window.print();
+                      }
+                    }}
+                    activeOpacity={0.85}
+                  >
+                    <Text style={[styles.closeExportBtnText, { color: '#000000' }]}>GUARDAR PDF / IMPRIMIR NÓMINA</Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={styles.closeExportBtn}
+                    onPress={() => setShowExportModal(false)}
+                    activeOpacity={0.85}
+                  >
+                    <Text style={styles.closeExportBtnText}>CERRAR VISTA PREVIA ✕</Text>
+                  </TouchableOpacity>
+                </View>
               </View>
             </View>
           </View>
@@ -1255,6 +1302,35 @@ const styles = StyleSheet.create({
     color: colors.accent,
     fontSize: 13,
     fontWeight: '800',
+  },
+  detailActionsRow: {
+    flexDirection: 'row',
+    gap: 10,
+    alignItems: 'center',
+  },
+  actionBtnHorizontal: {
+    backgroundColor: colors.bgDark,
+    borderWidth: 1,
+    borderColor: colors.primary,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: radii.md,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  actionBtnHorizontalDanger: {
+    borderColor: colors.danger,
+    backgroundColor: 'rgba(239, 68, 68, 0.1)',
+  },
+  actionBtnHorizontalSuccess: {
+    borderColor: colors.success,
+    backgroundColor: 'rgba(16, 185, 129, 0.15)',
+  },
+  actionBtnHorizontalText: {
+    color: colors.primary,
+    fontSize: 11,
+    fontWeight: '900',
+    letterSpacing: 0.5,
   },
   exportTemplateBtn: {
     backgroundColor: colors.bgDark,

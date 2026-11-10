@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, ScrollView } from 'react-native';
 import { useDojoStore, TabType } from '../store/dojoStore';
 import { CENTRAL_ACADEMIA_ID, matchAcademia } from '../data/constants';
@@ -19,6 +19,30 @@ export const Header: React.FC = () => {
   const { isMobile } = useResponsive();
   const [showAcademiaMenu, setShowAcademiaMenu] = useState(false);
 
+  // Cerrar el menú si se hace clic fuera en cualquier lado de la pantalla
+  useEffect(() => {
+    if (!showAcademiaMenu) return;
+
+    const handleOutsideClick = () => {
+      setShowAcademiaMenu(false);
+    };
+
+    const timer = setTimeout(() => {
+      if (typeof window !== 'undefined') {
+        window.addEventListener('click', handleOutsideClick);
+        window.addEventListener('touchstart', handleOutsideClick);
+      }
+    }, 50);
+
+    return () => {
+      clearTimeout(timer);
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('click', handleOutsideClick);
+        window.removeEventListener('touchstart', handleOutsideClick);
+      }
+    };
+  }, [showAcademiaMenu]);
+
   const availableAcademias = currentUser?.rol === 'ADMIN_GENERAL' ? academias : (currentUser?.academias || []);
 
   const targetAcademiaId = currentAcademia?.id || CENTRAL_ACADEMIA_ID;
@@ -31,7 +55,7 @@ export const Header: React.FC = () => {
     { key: 'mensualidades', label: 'MENSUALIDADES', icon: '💰' },
     { key: 'torneos', label: 'EVENTOS Y EXÁMENES', icon: '🏆' },
     { key: 'registro_publico', label: 'LINK MATRÍCULA', icon: '📲' },
-    { key: 'configuracion', label: 'SEDES Y PROFES', icon: '⚙️' },
+    { key: 'configuracion', label: 'CONFIGURACIONES', icon: '⚙️' },
   ];
 
   return (
@@ -40,7 +64,6 @@ export const Header: React.FC = () => {
       <View style={[styles.topBar, isMobile && styles.topBarMobile]}>
         <View style={styles.brandContainer}>
           <View style={styles.dojoBadge}>
-            <Text style={styles.dojoBadgeIcon}>🥋</Text>
             <Text style={styles.dojoBadgeText}>SHITO RYU</Text>
           </View>
           <View>
@@ -104,8 +127,12 @@ export const Header: React.FC = () => {
       </View>
 
       {/* Menú desplegable para cambiar de sede si el usuario tiene varias */}
-      {showAcademiaMenu && availableAcademias.length > 1 && (
-        <View style={styles.academiaDropdown}>
+      {showAcademiaMenu && (
+        <View
+          style={styles.academiaDropdown}
+          // @ts-ignore
+          onClick={(e: any) => e.stopPropagation?.()}
+        >
           <Text style={styles.dropdownHeader}>CAMBIAR DE SEDE / ACADEMIA:</Text>
           {availableAcademias.map((a) => {
             const isCurrent = matchAcademia(currentAcademia?.id, a.id);
@@ -125,7 +152,7 @@ export const Header: React.FC = () => {
               >
                 <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
                   <Text style={[styles.dropdownItemText, isCurrent && styles.dropdownItemTextActive]}>
-                    🥋 {a.nombre}
+                    {a.nombre}
                   </Text>
                   <Text style={{ color: isCurrent ? colors.primary : colors.textDim, fontSize: 11, fontWeight: '800' }}>
                     {aCount} {aCount === 1 ? 'alumno' : 'alumnos'}
@@ -250,7 +277,7 @@ const styles = StyleSheet.create({
   squareDot: {
     width: 6,
     height: 6,
-    borderRadius: 3,
+    borderRadius: 0,
     backgroundColor: colors.success,
   },
   statusText: {
@@ -368,6 +395,6 @@ const styles = StyleSheet.create({
     right: 8,
     height: 3,
     backgroundColor: colors.primary,
-    borderRadius: 2,
+    borderRadius: 0,
   },
 });
