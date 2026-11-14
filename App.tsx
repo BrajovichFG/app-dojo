@@ -1,3 +1,10 @@
+/**
+ * DOJOSTRIKE OS — Sistema de Gestión Deportiva y Financiera
+ * Dojo Shito Ryu Kyokan Genbukai Rancagua
+ * Versión: Prototipo 1 (Noviembre 2026)
+ * Infraestructura: Hostinger VPS KVM 2 • Cloudflare • NIC Chile (.cl)
+ */
+
 import React, { useEffect } from 'react';
 import { View, StyleSheet, SafeAreaView, Platform } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
