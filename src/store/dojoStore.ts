@@ -131,37 +131,91 @@ interface DojoState {
   deleteCustomCategory: (id: string) => void;
 }
 
+const cleanAccents = (s: string): string =>
+  (s || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .trim()
+    .toUpperCase();
+
+export const normalizeStudentFullName = (nombres: string, apellidos: string): string => {
+  const full = `${cleanAccents(nombres)} ${cleanAccents(apellidos)}`.replace(/\s+/g, ' ').trim();
+  const words = full.split(' ');
+  if (words.length >= 2 && words[words.length - 1] === words[words.length - 2]) {
+    words.pop();
+  }
+  return words.join(' ');
+};
+
+export const cleanStudentNames = (nombres: string, apellidos: string): { nombres: string; apellidos: string } => {
+  let nom = (nombres || '').trim();
+  let ape = (apellidos || '').trim();
+  if (ape && nom.toLowerCase().endsWith(ape.toLowerCase())) {
+    const cand = nom.slice(0, nom.length - ape.length).trim();
+    if (cand.length > 0) {
+      nom = cand;
+    }
+  }
+  return { nombres: nom, apellidos: ape };
+};
+
+export const cleanRut = (rut?: string | null): string => {
+  return (rut || '').replace(/[^0-9kK]/g, '').toUpperCase();
+};
+
 // Convert raw students to typed Alumno array
-const initialStudents: Alumno[] = (rawStudents as any[]).map((s, index) => ({
-  id: s.id || `alu-${index + 1}`,
-  academia_id: 'acad-1',
-  seccion_id:
-    s.seccion_id ||
-    (s.seccion === 'Pequeños 4-6 Años (Grupo I)'
-      ? 'sec-1'
-      : s.seccion === 'Pequeños 4-6 Años (Grupo II)'
-      ? 'sec-2'
-      : s.seccion === 'Adolescentes'
-      ? 'sec-3'
-      : 'sec-4'),
-  cinturon_id: 1, // Blanco
-  nombres: s.nombres || s.nombre_completo,
-  apellidos: s.apellidos || '',
-  rut: s.rut || undefined,
-  fecha_nacimiento: s.fecha_nacimiento || undefined,
-  genero: s.genero || 'M',
-  peso_actual_kg: s.peso_actual_kg || undefined,
-  direccion: s.direccion || undefined,
-  lugar_estudio_trabajo: s.establecimiento || undefined,
-  talla_polera: s.talla_polera || undefined,
-  talla_pantalon: s.talla_pantalon || 'M',
-  dia_pago_mensual: 5,
-  estado: s.estado || 'ACTIVO',
-  categoria_kumite: s.categoria_kumite || undefined,
-  categoria_kata: s.categoria_kata || undefined,
-  es_competidor: Boolean(s.categoria_kumite || s.categoria_kata || s.pago_zonal || s.pago_nacional),
-  fecha_ingreso: s.fecha_ingreso || '2024-01-01',
-}));
+const mappedInitialStudents: Alumno[] = (rawStudents as any[]).map((s, index) => {
+  const { nombres, apellidos } = cleanStudentNames(s.nombres || s.nombre_completo || '', s.apellidos || '');
+  return {
+    id: s.id || `alu-${index + 1}`,
+    academia_id: 'acad-1',
+    seccion_id:
+      s.seccion_id ||
+      (s.seccion === 'Pequeños 4-6 Años (Grupo I)'
+        ? 'sec-1'
+        : s.seccion === 'Pequeños 4-6 Años (Grupo II)'
+        ? 'sec-2'
+        : s.seccion === 'Adolescentes'
+        ? 'sec-3'
+        : 'sec-4'),
+    cinturon_id: 1, // Blanco
+    nombres,
+    apellidos,
+    rut: s.rut || undefined,
+    fecha_nacimiento: s.fecha_nacimiento || undefined,
+    genero: s.genero || 'M',
+    peso_actual_kg: s.peso_actual_kg || undefined,
+    direccion: s.direccion || undefined,
+    lugar_estudio_trabajo: s.establecimiento || undefined,
+    talla_polera: s.talla_polera || undefined,
+    talla_pantalon: s.talla_pantalon || 'M',
+    dia_pago_mensual: 5,
+    estado: s.estado || 'ACTIVO',
+    categoria_kumite: s.categoria_kumite || undefined,
+    categoria_kata: s.categoria_kata || undefined,
+    es_competidor: Boolean(s.categoria_kumite || s.categoria_kata || s.pago_zonal || s.pago_nacional),
+    fecha_ingreso: s.fecha_ingreso || '2024-01-01',
+  };
+});
+
+// Deduplicar lista inicial asegurando unicidad estricta
+const initialStudentsMap = new Map<string, Alumno>();
+for (const st of mappedInitialStudents) {
+  const key = normalizeStudentFullName(st.nombres, st.apellidos);
+  if (!initialStudentsMap.has(key)) {
+    initialStudentsMap.set(key, st);
+  } else {
+    const existing = initialStudentsMap.get(key)!;
+    initialStudentsMap.set(key, {
+      ...existing,
+      ...st,
+      rut: st.rut || existing.rut,
+      fecha_nacimiento: st.fecha_nacimiento || existing.fecha_nacimiento,
+      peso_actual_kg: st.peso_actual_kg !== undefined ? st.peso_actual_kg : existing.peso_actual_kg,
+    });
+  }
+}
+const initialStudents: Alumno[] = Array.from(initialStudentsMap.values());
 
 // Iniciar pagos limpios para registrar a partir de ahora
 const initialPayments: Record<string, Record<number, PaymentRecord>> = {};
@@ -240,47 +294,78 @@ export const useDojoStore = create<DojoState>()(
 
           const nextState: Partial<DojoState> = { supabaseSyncStatus: 'SYNCED' };
 
-          // 1. Fusionar alumnos remotos con locales para preservar atributos modificados localmente
-          const localStudents = get().students || [];
-          let finalStudents = remoteStudents.map((rs) => {
-            const localMatch = localStudents.find(
-              (ls) =>
-                ls.id === rs.id ||
-                (ls.nombres.trim().toLowerCase() === rs.nombres.trim().toLowerCase() &&
-                 ls.apellidos.trim().toLowerCase() === rs.apellidos.trim().toLowerCase())
-            );
-            if (localMatch) {
-              return {
-                ...localMatch,
-                ...rs,
-                // Preservar atributos si en local existían y en remoto venían vacíos o nulos
-                rut: rs.rut || localMatch.rut,
-                fecha_nacimiento: rs.fecha_nacimiento || localMatch.fecha_nacimiento,
-                genero: rs.genero || localMatch.genero,
-                peso_actual_kg: rs.peso_actual_kg !== undefined ? rs.peso_actual_kg : localMatch.peso_actual_kg,
-                direccion: rs.direccion || localMatch.direccion,
-                lugar_estudio_trabajo: rs.lugar_estudio_trabajo || localMatch.lugar_estudio_trabajo,
-                talla_polera: rs.talla_polera || localMatch.talla_polera,
-                talla_pantalon: rs.talla_pantalon || localMatch.talla_pantalon,
-                foto_url: rs.foto_url || localMatch.foto_url,
-                cinturon_id: rs.cinturon_id || localMatch.cinturon_id,
-              };
-            }
-            return rs;
-          });
+          // 1. Fusionar alumnos remotos con locales garantizando deduplicación y limpieza estricta
+          const currentLocalStudents = get().students || [];
+          const dedupMap = new Map<string, Alumno>();
 
-          for (const localSt of localStudents) {
-            const alreadyInFinal = finalStudents.some(
-              (fs) =>
-                fs.id === localSt.id ||
-                (fs.nombres.trim().toLowerCase() === localSt.nombres.trim().toLowerCase() &&
-                 fs.apellidos.trim().toLowerCase() === localSt.apellidos.trim().toLowerCase())
-            );
-            if (!alreadyInFinal) {
-              const realId = await supabaseService.insertAlumno(localSt);
-              finalStudents.unshift({ ...localSt, id: realId || localSt.id });
+          const addOrMergeStudent = (s: Alumno, isRemote: boolean) => {
+            const { nombres: cleanNom, apellidos: cleanApe } = cleanStudentNames(s.nombres, s.apellidos);
+            const normKey = normalizeStudentFullName(cleanNom, cleanApe);
+            const rutKey = cleanRut(s.rut);
+
+            // Buscar si ya existe por RUT o por Nombre Completo normalizado
+            let matchKey: string | undefined;
+            if (rutKey) {
+              for (const [k, v] of dedupMap.entries()) {
+                if (cleanRut(v.rut) === rutKey) {
+                  matchKey = k;
+                  break;
+                }
+              }
+            }
+            if (!matchKey && dedupMap.has(normKey)) {
+              matchKey = normKey;
+            }
+
+            const cleanCandidate: Alumno = {
+              ...s,
+              nombres: cleanNom,
+              apellidos: cleanApe,
+            };
+
+            if (matchKey) {
+              const existing = dedupMap.get(matchKey)!;
+              const merged: Alumno = {
+                ...existing,
+                ...cleanCandidate,
+                // Preservar ID remoto si viene de Supabase (UUID)
+                id: (isRemote && s.id ? s.id : existing.id) || s.id || existing.id,
+                nombres: cleanNom.length > 0 && cleanNom.length <= existing.nombres.length ? cleanNom : existing.nombres,
+                apellidos: cleanApe.length >= existing.apellidos.length ? cleanApe : existing.apellidos,
+                rut: cleanCandidate.rut || existing.rut,
+                fecha_nacimiento: cleanCandidate.fecha_nacimiento || existing.fecha_nacimiento,
+                genero: cleanCandidate.genero || existing.genero,
+                peso_actual_kg:
+                  cleanCandidate.peso_actual_kg !== undefined && cleanCandidate.peso_actual_kg !== null
+                    ? cleanCandidate.peso_actual_kg
+                    : existing.peso_actual_kg,
+                direccion: cleanCandidate.direccion || existing.direccion,
+                lugar_estudio_trabajo: cleanCandidate.lugar_estudio_trabajo || existing.lugar_estudio_trabajo,
+                talla_polera: cleanCandidate.talla_polera || existing.talla_polera,
+                talla_pantalon: cleanCandidate.talla_pantalon || existing.talla_pantalon,
+                foto_url: cleanCandidate.foto_url || existing.foto_url,
+                cinturon_id: cleanCandidate.cinturon_id || existing.cinturon_id,
+                seccion_id: cleanCandidate.seccion_id || existing.seccion_id,
+              };
+              dedupMap.set(matchKey, merged);
+            } else {
+              dedupMap.set(normKey, cleanCandidate);
+            }
+          };
+
+          // 1. Si Supabase tiene alumnos, Supabase es la fuente oficial y única de verdad
+          if (remoteStudents.length > 0) {
+            for (const rs of remoteStudents) {
+              addOrMergeStudent(rs, true);
+            }
+          } else {
+            // Modo offline: usar los alumnos locales limpios
+            for (const ls of currentLocalStudents) {
+              addOrMergeStudent(ls, false);
             }
           }
+
+          const finalStudents = Array.from(dedupMap.values());
           nextState.students = finalStudents;
 
           let finalAcademias = (remoteAcademias.length > 0 ? [...remoteAcademias] : [...(get().academias || [])])
@@ -977,12 +1062,13 @@ export const useDojoStore = create<DojoState>()(
       },
     }),
     {
-      name: 'dojo_shito_ryu_storage_v5',
+      name: 'dojo_shito_ryu_storage_v6',
       storage: webStorage,
       migrate: (persistedState: any) => {
         if (persistedState) {
           persistedState.users = USUARIOS_DISPONIBLES;
           persistedState.academias = ACADEMIAS_DISPONIBLES;
+          persistedState.students = initialStudents;
         }
         return persistedState;
       },
